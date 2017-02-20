@@ -1,0 +1,128 @@
+.day-block.block.appointment .day-block-appointment-data {
+  width: 100%;
+  padding: 10px 8px 4px 6px;
+  overflow: hidden; }
+.day-block.block.appointment .wdth100pr {
+  width: 100%; }
+.day-block.block.appointment .bilingual-status {
+  color: #9999ff; }
+.day-block.block.appointment .calendar-alert-icon {
+  padding-left: 10px; }
+.day-block.block.appointment .red {
+  color: #d43e45; }
+.day-block.block.appointment .top-row {
+  width: 100%; }
+.day-block.block.appointment .emp-name {
+  margin-top: -9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize; }
+.day-block.block.appointment .emp-tenure {
+  margin: 0 0 0 4px;
+  text-transform: uppercase; }
+.day-block.block.appointment .emp-spanish {
+  margin: 0 0 0 4px; }
+.day-block.block.appointment .alert {
+  position: absolute;
+  top: 2px; }
+.day-block.block.appointment .bottom-container {
+  width: 100%; }
+.day-block.block.appointment .classicons {
+  font-size: 13px; }
+.day-block.block.appointment .position-icon {
+  margin-top: -16px;
+  margin-right: -12px; }
+.day-block.block.appointment.small-range {
+  font-size: 10px; }
+.day-block.block.appointment.smaller-range {
+  font-size: 10px; }
+  .day-block.block.appointment.smaller-range .alert .error-circle {
+    font-size: 16px; }
+  .day-block.block.appointment.smaller-range .emp-tenure {
+    display: none; }
+  .day-block.block.appointment.smaller-range .empname {
+    overflow: visible !important; }
+  .day-block.block.appointment.smaller-range .position-icon {
+    margin-top: -20px; }
+  .day-block.block.appointment.smaller-range .emp-name {
+    overflow: visible !important;
+    text-overflow: ellipsis; }
+  .day-block.block.appointment.smaller-range .bottom-row {
+    padding-bottom: 4px; }
+.day-block.block.appointment.smallest-range {
+  font-size: 10px; }
+  .day-block.block.appointment.smallest-range .alert {
+    bottom: -2px; }
+    .day-block.block.appointment.smallest-range .alert .error-circle {
+      font-size: 12px; }
+  .day-block.block.appointment.smallest-range .emp-tenure {
+    display: none; }
+  .day-block.block.appointment.smallest-range .empname {
+    overflow: visible !important;
+    text-overflow: ellipsis; }
+  .day-block.block.appointment.smallest-range .bottom-container {
+    width: 80%;
+    padding-top: -6px;
+    padding-left: 0px; }
+  .day-block.block.appointment.smallest-range .emp-name {
+    overflow: visible !important;
+    text-overflow: ellipsis; }
+  .day-block.block.appointment.smallest-range .bilingual-status {
+    display: none; }
+  .day-block.block.appointment.smallest-range .position-icon {
+    margin-top: -20px; }
+.day-block.block.appointment.column-multi {
+  font-size: 10px; }
+  .day-block.block.appointment.column-multi .alert .error-circle {
+    font-size: 16px; }
+  .day-block.block.appointment.column-multi.smaller-range .bottom-row {
+    display: none; }
+  .day-block.block.appointment.column-multi.smallest-range .bottom-row {
+    display: none; }
+  .day-block.block.appointment.column-multi .top-row {
+    -webkit-flex-wrap: wrap;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap; }
+  .day-block.block.appointment.column-multi .classicons {
+    display: none; }
+  .day-block.block.appointment.column-multi .rating-badge {
+    display: none; }
+  .day-block.block.appointment.column-multi .empname {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-overflow: ellipsis; }
+  .day-block.block.appointment.column-multi .emp-tenure {
+    width: 100%;
+    margin: -2px 0 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis; }
+  .day-block.block.appointment.column-multi .bottom-row {
+    margin: -2px 0 0 0; }
+.day-block.block.appointment.column-3 .empname {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-overflow: ellipsis; }
+.day-block.block.appointment.column-3 .alert-show {
+  display: none; }
+.day-block.block.appointment.column-3 .emp-rating {
+  display: none; }
+.day-block.block.appointment.column-3 .emp-tenure {
+  display: none; }
+.day-block.block.appointment.column-3 .classicons {
+  display: none; }
+.day-block.block.appointment.column-3 .emp-spanish {
+  display: none; }
+.day-block.block.appointment.column-many .emp-rating {
+  display: none; }
+.day-block.block.appointment.column-many .classicons {
+  display: none; }
+.day-block.block.appointment.column-many .alert-show {
+  display: none; }
+.day-block.block.appointment.column-many .emp-spanish {
+  display: none; }
+.day-block.block.appointment.column-many .emp-name {
+  display: none; }
+.day-block.block.appointment.column-very-many .emp-name {
+  display: none; }
+
+/*# sourceMappingURL=dayBlockAppointmentData.css.map */

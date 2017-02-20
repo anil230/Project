@@ -1,0 +1,44 @@
+'use strict';
+
+/**
+ * Backing controller for the calendarAlert directive.
+ * @class dayCalendar.controllers.calendarAlertCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('calendarAlertCtrl', ['$scope', 'alertLevel', '$window', function ($scope, alertLevel, $window) {
+
+    // private vars
+    var self = this;
+
+    /**
+     * Object to hold alertLevel constant.
+     * @name dayCalendar.controllers.calendarAlertCtrl#alertLevel
+     * @propertyOf dayCalendar.controllers.calendarAlertCtrl
+     */
+    self.alertLevel = alertLevel;
+
+    /**
+     * String to indicate the placement position of the popover.
+     * @name dayCalendar.controllers.calendarAlertCtrl#isVisible
+     * @propertyOf dayCalendar.controllers.placement
+     */
+    self.placement = 'right-top';
+
+    /**
+     * Function to check if the placement position of the popover should be changed to 'left'
+     * because there is not enough space on the right.
+     * @name dayCalendar.controllers.calendarAlertCtrl#checkPlacement
+     * @propertyOf dayCalendar.controllers.checkPlacement
+     */
+    self.checkPlacement = function($event) {
+        if (($window.screen.width - $event.clientX) < 230) {
+            self.placement = 'left';
+        }
+    }
+
+    // Default the popoverEnabled value to true if it was not specified
+    if (angular.isUndefined(self.popoverEnabled())) {
+        self.popoverEnabled = true;
+    }
+
+}]);

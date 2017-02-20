@@ -1,0 +1,175 @@
+<form name="editClientInfoForm">
+    <md-content>
+
+   <div layout="row" layout="column" class="pageDivider">
+          <div flex class="minHgt155px">
+         <div class="fields-container clientInfo" layout="row" layout-align="left" layout-wrap>
+         <div class="client-first-field wdth48p" layout="column" layout-align="start start" flex="none">
+                        <span class="field-label">Client Name</span>
+                        <span class="field-value">{{apptInfo.Appointment.ClientInfo.Full_Name}}</span>
+         </div>
+         <div class="client-field wdth48p" layout="column" layout-align="start start" flex="none">
+                        <span class="field-label">Last 4 of SSN</span>
+                        <span class="field-value">{{apptInfo.Appointment.ClientInfo.Last4SSN}}</span>
+         </div>
+         </div>
+
+        <div class="fields-container clientInfo" layout="row" layout-align="left" layout-wrap>
+        <div class="client-first-field wdth23p" layout="column" layout-align="start start" flex="none">
+                        <span class="field-label">Rating</span>
+                        <span class="field-value">{{apptInfo.Appointment.ClientInfo.Client_Rating}}</span>
+        </div>
+
+          <div class="client-field mgnLft50px" layout="column" layout-align="start start" flex="none">
+                        <md-checkbox ng-disabled="true" class="md-primary language-checkbox" aria-label="CheckBox" ng-model="apptInfo.Appointment.ClientInfo.isLanguagePrefered">
+                        <div class="field-value">
+                             <span class="text-label">Spanish Language</span>
+                        </div>
+                        </md-checkbox>
+         </div>
+         </div>
+         </div>
+       
+     <div flex class="minHgt155px">
+         <div ng-if="!showClientInfo" class="fields-container appt-info-client-btn" layout="row" layout-align="center" layout-wrap>
+                    <md-button class="button-av-1" type="button" ng-click="showClient();" layout-align="center"><span><md-icon class="fltlft" md-font-library="material-icons">person</md-icon><md-icon class="btnIconsmall" md-font-library="material-icons">check</md-icon></span>SHOW CLIENT CONTACT INFO</md-button>
+         </div>
+
+         <div ng-if="showClientInfo">
+
+         <div class="phtype" flex layout="row client-field mgnLft10px">
+                    <md-input-container>
+                            <span class="field-value phLbl">Phone</span>
+                            <input class="wdth100px fltlft" name="phoneNo" type="text" ng-model="clientDetails.Phone_No" ui-mask="999-999-9999" ui-options="{clearOnBlur: false,addDefaultPlaceholder:false}" required>
+                            <div class="mgnLft35px" ng-messages="editClientInfoForm.phoneNo.$error" ng-if="clientDetails.hasPhone">
+                     <div ng-message='required' class="message-txt">This is required!</div>
+                     </div>
+                     </md-input-container>
+                     
+                     <md-input-container>
+                                <span class="field-value phLbl">Type</span>
+                            <md-select class="wdth100px fltrgt" name="phoneType" ng-model="clientInfo.PhoneType" aria-label="Type">
+                                <md-option ng-value="type" ng-repeat="type in phoneTypes">{{type}}</md-option>
+                           </md-select>
+                     </md-input-container>
+                     </div>
+                     <div class="fields-container" layout="row" layout-align="left" layout-wrap>
+                            <span>Reminder Preference</span>
+                     </div>
+                     <div class="fields-container mobile-sec" layout="row" layout-align="left" layout-wrap>
+                     <div class="client-field" layout="column" layout-align="start start" flex="none">
+                            <span>
+                                Mobile #:
+                                <md-checkbox class="md-primary language-checkbox" ng-click="apptInfo.checkPhoneOrEmail(apptInfo.reminderPreferenceValues.TEXT)" ng-model="apptInfo.Appointment.Is_Mobile" aria-label="CheckBox">
+                                    <div class="field-value">
+                                        <span></span>
+                                    </div>
+                                </md-checkbox>
+                     <md-input-container>
+                            <input type="text" class="mgnTp10px" ng-model="clientDetails.MobilePhone" name="mobilePhone" ui-mask="999-999-9999" ui-options="{clearOnBlur:false,addDefaultPlaceholder:false}" required>
+                                    <div ng-messages="editClientInfoForm.mobilePhone.$error" ng-if="clientDetails.hasMobilePhone">
+                            <div class="message-txt" ng-message='required'>This is required!</div>
+                     </div>
+                     </md-input-container>
+                            </span>
+                     </div>
+                     </div>
+
+                     <div class="fields-container email-sec" layout="row" layout-align="left" layout-wrap>
+                     <div class="client-field" layout="column" layout-align="start start" flex="none">
+                            <span>
+                                Email:
+                                <md-checkbox ng-click="apptInfo.checkPhoneOrEmail(apptInfo.reminderPreferenceValues.EMAIL)" ng-model="apptInfo.Appointment.Is_Email" class="md-primary language-checkbox mgnLft18px" aria-label="CheckBox"></md-checkbox>
+                     <md-input-container>
+                            <input type="email" class="mgnTp10px" name="email" ng-model="clientDetails.Email_Txt" maxlength="255" ng-pattern="/^.+@.+\..+$/">
+                                    <div ng-messages="editClientInfoForm.email.$error" ng-if="clientDetails.hasEmail">
+                            <div ng-message="pattern" class="message-txt">You must enter a valid email address.</div>
+                     </div>
+                     </md-input-container>
+                            </span>
+                     </div>
+                     </div>
+
+         </div>
+     </div>
+   </div>
+    <md-divider></md-divider>
+        <div class="fields-container pdngTp10px" layout="row" layout-align="left" layout-wrap>
+            <div class="client-first-field wdth23p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Service Type</span>
+                <span class="field-value">{{apptInfo.Appointment.Product_Desc}}</span>
+            </div>
+            <div class="client-field  wdth25p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Date</span>
+                <span class="field-value">{{apptInfo.Appointment.Appt_Month_Day}}</span>
+            </div>
+            <div class="client-field  wdth25p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Time</span>
+                <span class="field-value">{{apptInfo.Appointment.Appt_Start_And_End_Time}}</span>
+            </div>
+            <div class="client-field  wdth25p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Tax Pro</span>
+                <span class="field-value"><ratings-badge class="buffer-right" rating="::apptInfo.Appointment.EmployeeInfo.TP_Rating"></ratings-badge>{{apptInfo.Appointment.EmployeeInfo.Tax_Pro}}</span>
+            </div>
+        </div>
+
+        <div class="fields-container pdngTp5px" layout="row" layout-align="left" layout-wrap>
+            <div class="client-first-field wdth48p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Location</span>
+                <span class="field-value txtEllps" title="{{apptInfo.Appointment.OfficeInfo.Location_Str}}">{{apptInfo.Appointment.OfficeInfo.Location_Str}}</span>
+            </div>
+            <div class="client-field  wdth25p" layout="column" layout-align="start start" flex="none">
+                <span class="field-label">Appt SetBy</span>
+                <span class="field-value">{{apptInfo.Appointment.Originating_System}}</span>
+            </div>
+            <div class="client-field  wdth25p" layout="column" layout-align="start start" flex="none">
+                <md-checkbox ng-disabled="true" class="md-primary language-checkbox followupAppt" ng-model="apptInfo.Appointment.Follow_Up_Indicator" aria-label="CheckBox">
+                <div class="title week-title">
+                        <span class="text-label">
+                            Followup Appt
+                        </span>
+                </div>
+                </md-checkbox>
+            </div>
+        </div>
+
+        <div class="fields-container pdngBtm10px" layout="row" layout-align="left" layout-wrap>
+            <div class="client-first-field appt-detail-textarea" layout="column">
+                <span class="field-label">Notes {{apptInfo.notesValue.length > 0 ? '('+ (apptInfo.noteLength - apptInfo.notesValue.length)+')' : ''}}</span>
+                <textarea class="notes-textarea" disabled ng-model="apptInfo.Appointment.Appt_Note_txt"></textarea>
+            </div>
+            <div class="client-first-field appt-detail-textarea mgnBtm5px" layout="column">
+                <textarea class="notes-textarea-edit" ng-model="apptInfo.notesValue" maxlength="{{apptInfo.noteLength}}" placeholder="Enter new notes"></textarea>
+            </div>
+        </div>
+
+        <md-divider></md-divider>
+
+        <div class="fields-container appt-info-btn pdngTp10px" layout="row" layout-align="center" layout-wrap>
+            <md-button ng-disabled="!apptInfo.Action.IsSaveClose" class="button-av mgnRgt95" type=" button" ng-click="apptInfo.saveAndClose(editClientInfoForm.email.$invalid, editClientInfoForm.mobilePhone.$invalid, editClientInfoForm.phoneNo.$invalid)" layout-align="center"><md-icon class="btnIcon" md-font-library="material-icons">save</md-icon>SAVE & CLOSE</md-button>
+        </div>
+
+        <div class="appt-info-btn">
+            <div>
+                <md-button ng-disabled="!apptInfo.Action.IsConfirmed" class="button-av btn-txt wdth20p" type="button" ng-click="apptInfo.update(apptInfo.statusIdTypes.CONFIRMED, null, popoverMessages().CONFIRM)"><md-icon class="btnIcon" md-font-library="material-icons">check_circle</md-icon>CONFIRM</md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsCheckedIn" class="button-av btn-txt wdth20p" type="button" ng-click="apptInfo.update(apptInfo.statusIdTypes.CHECK_IN, null, popoverMessages().CHECK_IN)">
+                    <md-icon class="btnIcon" md-font-library="material-icons">person</md-icon><md-icon class="btnIconsmall" md-font-library="material-icons">check</md-icon>CHECK-IN
+                </md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsBeginService" class="button-av btn-txt wdth20p" type="button" ng-click="apptInfo.update(apptInfo.statusIdTypes.BEGIN_SERVICE, null, popoverMessages().BEGIN_SERVICE)"><md-icon class="btnIcon" md-font-library="material-icons">traffic</md-icon>START SERVICE</md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsReschedule || !hasTaxData()" 
+                           class="button-av btn-txt wdth20p" 
+                           type="button"
+                           ng-click="reschedule()"><md-icon class="btnIcon" md-font-library="material-icons">event</md-icon>RESCHEDULE</md-button>
+            </div>
+            <div>
+                <md-button ng-disabled="!apptInfo.Action.IsCancel" class="button-av btn-txt wdth20p" type=" button" ng-click="apptInfo.update(apptInfo.statusIdTypes.CANCEL, null, popoverMessages().CANCEL)"><md-icon class="btnIcon" md-font-library="material-icons">event_busy</md-icon>CANCEL APPT</md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsNoShow" class="button-av btn-txt wdth20p" type="button" ng-click="apptInfo.update(apptInfo.statusIdTypes.CLIENT_NO_SHOW, null, popoverMessages().NO_SHOW)">
+                    <md-icon class="btnIcon" md-font-library="material-icons">person</md-icon><md-icon class="btnIconsmall" md-font-library="material-icons">close</md-icon>NO SHOW
+                </md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsAssignTP" class="button-av btn-txt wdth20p" type="button"><md-icon class="btnIcon" md-font-library="material-icons">person</md-icon><md-icon class="btnIconsmall" md-font-library="material-icons">add</md-icon>ASSIGN</md-button>
+                <md-button ng-disabled="!apptInfo.Action.IsPersonal" class="button-av mgnLft10px large-button" type="button"><span><md-icon class="btnIcon" md-font-library="material-icons">person</md-icon><md-icon class="btnIconsmall" md-font-library="material-icons">close</md-icon></span>SCHEDULE PERSONAL WORK TIME</md-button>
+            </div>
+        </div>
+
+    </md-content>
+</form>

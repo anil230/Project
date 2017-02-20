@@ -1,0 +1,280 @@
+'use strict';
+
+/**
+ * Backing controller for the dayBlock directive.  Handles data transformations and extrapolations to drive the view.
+ * @class dayCalendar.controllers.dayBlockCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('dayBlockCtrl', ['$scope', 'blockTypes', 'employeeRoles', '$filter', 'calendarBlockLayout', 'validationMessages', 'timeFormat',
+    function ($scope, blockTypes, employeeRoles, $filter, calendarBlockLayout, validationMessages, timeFormat) {
+
+    // private vars
+    var self = this;
+
+    /**
+    * Enum of block types exposed to the view.
+    * @name dayCalendar.controllers.dayBlockCtrl#blockTypes
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.blockTypes = blockTypes;
+
+    /**
+    * Enum of employee roles exposed to the view.
+    * @name dayCalendar.controllers.dayBlockCtrl#employeeRoles
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.employeeRoles = employeeRoles;
+
+    /**
+    * Mapping object to simplify the permissions for the block for the view.
+    * @name dayCalendar.controllers.dayBlockCtrl#blockRules
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.blockRules = {};
+
+    /**
+    * Flag to determine if this is a schedule that is not in the currently selected office.
+    * @name dayCalendar.controllers.dayBlockCtrl#isScheduleOtherOffice
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.isScheduleOtherOffice = false;
+
+    /**
+    * Flag to determine if availability is disabled or not.
+    * @name dayCalendar.controllers.dayBlockCtrl#isAvailabilityDisable
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.isAvailabilityDisable = checkIfAvailabilityDisabled();
+
+    /**
+    * Field to show appropriate message when availability is disabled.
+    * @name dayCalendar.controllers.dayBlockCtrl#availabilityDisabledMessage
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.availabilityDisabledMessage = '';
+
+    /**
+    * Flag to determine if the role of the block matches the selected role.
+    * @name dayCalendar.controllers.dayBlockCtrl#doesNotMatchSelectedRole
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.doesNotMatchSelectedRole = false;
+
+    /**
+    * Block role translated to a human readable string for display.
+    * @name dayCalendar.controllers.dayBlockCtrl#roleString
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.roleString = '';
+
+    /**
+    * Dynamic layout object that defines position values for the block, relative to its state and the parent column state.
+    * @name dayCalendar.controllers.dayBlockCtrl#layout
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.layout = undefined;
+
+    /**
+    * Dynamic object that defines CSS classes for the block, relative to its state.
+    * @name dayCalendar.controllers.dayBlockCtrl#classes
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    */
+    self.classes = undefined;
+
+    /**
+    * Translate a block employee role to a UI string.
+    * @name dayCalendar.controllers.dayBlockCtrl#classes
+    * @propertyOf dayCalendar.controllers.dayBlockCtrl
+    * @function
+    */
+    self.getStringForBlockRole = function() {
+        var result;
+        switch (self.block.Employee_Role_Id) {
+            case employeeRoles.CSP:
+                result = 'CSP';
+                break;
+            case employeeRoles.CSL:
+                result = 'CSL';
+                break;
+            case employeeRoles.TAX_PRO:
+                result = 'TP';
+                break;
+        }
+        return result;
+    };
+
+    function updateLayout() {
+        self.layout = self.dayColumnCtrl.getColumnBlockPosition(self.block, self.blockType(), self.blockRules);
+    }
+
+    function updateClasses() {
+        self.classes = calendarBlockLayout.getBlockClasses(
+            self.blockType(),
+            self.block,
+            self.blockRules,
+            self.layout,
+            self.isScheduleOtherOffice,
+            self.isAvailabilityDisable,
+            self.doesNotMatchSelectedRole);
+    }
+
+    function updateBlockRole() {
+        self.roleString = self.getStringForBlockRole();
+    }
+
+    function checkIfAvailabilityDisabled() {
+        var isLocked = false,
+            currentDate = new Date(),
+            lastDayOpen = self.disableEditAfter,
+            selectedDate = self.block.Date ? self.block.Date : self.block.StartDateTime;
+        console.log(moment(selectedDate));
+        console.log(moment(lastDayOpen));
+
+
+        if ($filter('availabilityEditStatusFilter')()) {
+            isLocked = true;
+            console.log('1111111111111')
+            self.availabilityDisabledMessage = validationMessages.AVAILABILITY_LOCKED;
+        }
+        else if (moment(selectedDate) >= moment(lastDayOpen)) {
+            isLocked = true;
+            console.log('3333333333333333333')
+
+            self.availabilityDisabledMessage = validationMessages.AVAILABILITY_NOTOPEN_TOEDIT + ' ' + moment(lastDayOpen).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+        }
+        else if (moment(selectedDate) < moment(currentDate).startOf('day')) {
+            isLocked = true;
+            console.log('7666666666666')
+
+        }
+
+        return isLocked;
+    }
+
+    /**
+    * Setup a watch to monitor changes for class state.
+    */
+    $scope.$watchGroup([
+            function () {
+                return self.blockType();
+            }          
+        ],
+        function (values) {
+            // class state changed, update
+            updateClasses();
+        }
+    );
+
+    /**
+    * Setup a watch to monitor changes to the block state.
+    */
+    $scope.$watchCollection(
+        function () {
+            return self.block;
+        },
+        function (value) {
+            if (value) {
+                updateLayout();
+                updateClasses();
+            }
+        }
+    );
+
+    /**
+    * Setup a watch to monitor changes to the block reference.
+    */
+    $scope.$watch(
+        function() {
+            return self.block;
+        },
+        function(value) {
+            if (value) {
+                self.isScheduleOtherOffice = value.$office !== undefined;
+            } else {
+                self.isScheduleOtherOffice = false;
+            }
+
+            // class state changed, update
+            updateClasses();
+            updateBlockRole();
+        }
+    );
+
+    /**
+    * Setup a watch to monitor changes to the calendars selected role and the blocks designated role.
+    */
+    $scope.$watchGroup([
+            function() {
+                return self.selectedRole();
+            },
+            function() {
+                return (self.block && self.block.Employee_Role_Id) ? self.block.Employee_Role_Id : undefined;
+            }
+        ],
+        function(values) {
+            var selectedRole = values[0],
+                blockRole = values[1];
+
+            // Set this flag if 1) it's a schedule block, 2) selectedRole is defined, 3) selectedRole is either ALL or the block role does not match the selected role.
+            self.doesNotMatchSelectedRole = self.blockType() === blockTypes.SCHEDULE &&
+                selectedRole !== undefined &&
+                (selectedRole === employeeRoles.ALL || blockRole !== selectedRole);
+            self.isAvailabilityDisable = checkIfAvailabilityDisabled();
+
+            // class state changed, update
+            updateClasses();
+        }
+    );
+
+    /**
+    * Setup a watch to monitor changes to the permissions of this block.
+    */
+    $scope.$watch(
+        function() {
+            return self.permissions();
+        },
+        function(value) {
+            if (self.blockType() === blockTypes.APPOINTMENT) {
+                self.blockRules = {
+                    canEdit: value.blockPermissions.appointments.update || self.block.$ProposedAppointment,
+                    canCreateChild: value.blockPermissions.appointments.del,
+                    canLaunchModal: value.operations.modalEdit,
+                    saveEdits: value.operations.immediateSaves
+                }
+
+                // Set flag indicating this appointment is read-only so the drag handles will all be hidden.
+                // TODO:  Currently canCreateChild is "true" even though an appointment cannot create a child.
+                // The canCreateChild flag is being used to distinguish between "appointment-read-only" class
+                // on the Staffing view, where the appointment block is narrow and no label appears, and a read-only
+                // appointment in the appt setting calendar view, where the appointment block is full-size yet still read-only.
+                // A better method should be found.
+                self.isAppointmentReadOnly = !self.blockRules.canEdit && self.blockRules.canCreateChild && !self.block.$ProposedAppointment;
+            } else if (self.blockType() === blockTypes.SCHEDULE) {
+                self.blockRules = {
+                    canEdit: value.blockPermissions.schedules.update,
+                    canCreateChild: value.blockPermissions.appointments.create,
+                    canLaunchModal: value.operations.modalEdit,
+                    saveEdits: value.operations.immediateSaves
+                }
+            } else if (self.blockType() === blockTypes.AVAILABILITY) {
+                self.blockRules = {
+                    canEdit: value.blockPermissions.availability.update,
+                    canCreateChild: value.blockPermissions.schedules.create,
+                    canLaunchModal: value.operations.modalEdit,
+                    saveEdits: value.operations.immediateSaves
+                }
+            } else if (self.blockType() === blockTypes.AVAILABILITY_RANGE) {
+                self.blockRules = {
+                    canEdit: false,
+                    canCreateChild: value.blockPermissions.availability.create,
+                    canLaunchModal: value.operations.modalEdit,
+                    saveEdits: value.operations.immediateSaves
+                }
+            }
+
+            updateLayout();
+            updateClasses();
+        }
+    );
+
+}]);

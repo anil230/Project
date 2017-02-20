@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<!-- Created by jampani venu
+	last 4 of id: 3224 -->
+	<title>Javascript Functions and IF</title>
+	<meta charset="utf-8"/>
+	</head>
+	<body>
+	<h1>Fun with JavaScript</h1>
+	<p>please enter two integers when prompted </p>
+	
+	<script type="text/javascript">
+	//this script accepts two integers from the users and after validation,
+	//compares and displays the greater / smaller number using a function
+	//this also finds the product of sum of numbers using another function
+	// variables:
+	var input1;
+	var input2;
+	// prompt the user for the first input, and assign it to input1.
+	input1 = window.prompt ("please enter first integer") ;
+	// validate input1
+	if (!isNaN(input1)) {
+		//True: valid: bring up the second prompt and assign to input2
+		input2 = window.prompt("please enter the second integer");
+		//validate input2
+	if (!isNaN(input2)) {
+		//true: input2 valid
+		//call the two functions in order to display results
+		compare();
+		product();
+	}else{
+	   //False:invalid
+	   window.alert("First Input Invalid. Refresh to Retry");
+	} // end if: input1 validation
+	}else {
+	  //False: invalid
+	  window.alert("First input Invalid. Refresh to Retry");
+	  } // end if:input1 validation.
+	  function compare() {
+	  // compares input1 and input2 and displays the results.
+	  if(input1>input2){
+	  //display the result:
+	  document.write ("you entered " + input1+ " and " +input2+". <br/>"+input1 +" is greater than" + input2 +". <br/>");
+	  } else if(input1<input2){
+	  //display the result:
+	  document.write ("you entered " + input1+ " and " +input2+". <br/>"+input1 +" is less than" + input2 +". <br/>");
+	 
+	  
+	  }else if(input1==input2){
+	  //display the result:
+	  document.write ("you entered " + input1+ " and " +input2+". <br/>"+input1 +" is equal to" + input2 +". <br/>");
+	  
+	  }// end if comparisons.
+	  
+	  } // end function compare()
+	  function product() {
+	  //this function finds the product of input1 and input2 and displays it.
+	  //variables
+	  var result;
+	  //find the product and assign to result;
+	  result=input1*input2;
+	  //display the results
+	  document.write("Product of " + input1 + " and " +input2+ " is: " + result);
+	  } // end of product()
+	</script>
+	</body>
+</html>

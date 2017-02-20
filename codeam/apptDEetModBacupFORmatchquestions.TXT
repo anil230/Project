@@ -1,0 +1,620 @@
+'use strict';
+
+/**
+ * @class appointmentDetails.controllers.appointmentDetailsModalCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('appointmentDetailsModalCtrl', ['$scope', '$rootScope', '$uibModal', 'timeFormat', 'phoneTypes', 'statusIdTypes', 'apptHistory', 'appointmentDataProvider', 'appointmentDetails', 'taxData', 'notAvailableDefaults', 'clientInfo', 'reminderPreferenceValues', 'appointmentDetailsModalService', 'updateAppointment', 'toaster', 'bestMatchAnswers',
+    function ($scope, $rootScope, $uibModal, timeFormat, phoneTypes, statusIdTypes, apptHistory, appointmentDataProvider, appointmentDetails, taxData, notAvailableDefaults, clientInfo, reminderPreferenceValues, appointmentDetailsModalService, updateAppointment, toaster, bestMatchAnswers) {
+
+        var self = this, clientInfoBackup = {}, apptInfoBackUp = {};
+
+    self.showClientInfo = false;
+    self.timeFormat = timeFormat;
+    
+    /**
+    * Constant representing Not Available strings("N/A")
+    * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#notAvailableDefaults
+    * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+    */
+    self.notAvailableDefaults = notAvailableDefaults;
+
+    /*To load appointment information*/
+    getAppointmentInfo();
+   
+
+    /*To get appointment details*/
+    function getAppointmentInfo() {
+        self.phoneTypes = _.values(phoneTypes);
+
+        var appointmentId = $scope.apptId,
+        appointmentDetailsParams = {
+            Appointment_Id: parseInt(appointmentId)
+        };
+        console.log($scope.apptId);
+        var query = appointmentDetails.query(appointmentDetailsParams);
+       
+        /**
+        * Success handler function for the appointment info.
+        * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentInfoSuccess
+        * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+        */
+        function handleGetAppointmentInfoSuccess(appointmentDetails) {
+
+            self.appointmentInfo = appointmentDetails.Response[0];
+
+            self.appointmentInfo.statusIdTypes = statusIdTypes;
+
+            /*To set N/A*/
+            resetClientInfo(self.appointmentInfo.Appointment.ClientInfo);
+            resetAppointmentInfo(self.appointmentInfo.Appointment);
+            resetOfficeInfo(self.appointmentInfo.Office);
+            resetEmployeeInfo(self.appointmentInfo.Employee);
+
+            if (self.appointmentInfo && self.appointmentInfo.Appointment && self.appointmentInfo.Appointment.ClientInfo) {
+
+                var isLanguagePrefered = self.appointmentInfo.Appointment.ClientInfo.Client_Latino_Lang_Cd == 1 ? true : false;
+                self.appointmentInfo.Appointment.ClientInfo["isLanguagePrefered"] = isLanguagePrefered;
+            }
+            /*To compare with type - Email/Phone*/
+            self.appointmentInfo.reminderPreferenceValues = reminderPreferenceValues;
+
+            self.appointmentInfo.Action.IsSaveClose = false;
+            /*To save and close*/
+            self.appointmentInfo.saveAndClose = function () {
+                
+                if (self.clientForm) {
+                    triggerErrorMessage(function (isValid) {
+                        //If isValid is true, continue to save data
+                        console.log(isValid);
+                        if (isValid) {
+                            var saveParams = {
+                                Appointment_Id: $scope.apptId,
+                                Client_Phone_No: self.clientForm.Phone_No,
+                                Client_Email_Txt: self.clientForm.Email_Txt,
+                                Appt_Reminder_Preference_Cd: self.appointmentInfo.Appointment.Is_Email ? "E" : self.appointmentInfo.Appointment.Is_Mobile ? "T" : "N",
+                                Client_Mobile_No: self.clientForm.MobilePhone,
+                                Appt_Note_Txt: self.appointmentInfo.notesValue,
+                                ProfileUpdated: true
+                            };
+                            updateApptInfo(saveParams);
+                        }
+                    });
+                } else {
+                    var saveParams = {
+                        Appointment_Id: $scope.apptId,
+                        Appt_Note_Txt: self.appointmentInfo.notesValue,
+                        ProfileUpdated: true
+                    };
+                    updateApptInfo(saveParams);
+                }
+                
+            }
+
+            self.appointmentInfo.update = function (statusId, reasonId) {
+
+                var $modalScope = $rootScope.$new();
+                // $modalScope.apptId = apptId;
+                $modalScope.statusId = statusId;
+                $modalScope.reasonId = reasonId ? reasonId : null;
+                $modalScope.message = "Are you sure want to confirm?";
+                appointmentDetailsModalService.openConfirm($modalScope, function (activeModal) {
+                    /*To close confirmation popup*/
+                    $modalScope.cancel = function () {
+                        activeModal.close();
+                        activeModal = undefined;
+                        // destroy the modals custom scope
+                        $modalScope.$destroy();
+                    }
+                    /*To proceed to the update infor*/
+                    $modalScope.confirm = function (statusId, reasonId) {
+                        console.log("Confirmed...." + statusId);
+                        // activeModal.close();
+                        activeModal = undefined;
+                        var saveParams = {};
+                        if(self.clientForm){
+                            saveParams = {
+                               Appointment_Id: $scope.apptId,
+                                Status_Id: statusId,
+                                Check_Out_Reason_Id: reasonId,
+                                Client_Phone_No: self.clientForm.Phone_No,
+                                Client_Email_Txt: self.clientForm.Email_Txt,
+                                Appt_Reminder_Preference_Cd: self.appointmentInfo.Appointment.Is_Email ? "E" : self.appointmentInfo.Appointment.Is_Mobile ? "T" : "N",
+                                Client_Mobile_No: self.clientForm.MobilePhone,
+                                Appt_Note_Txt: self.appointmentInfo.notesValue
+                                //ProfileUpdated: true
+                            };
+                        }
+                        else{
+                             saveParams = {
+                                 Appointment_Id: $scope.apptId,
+                                 Status_Id: statusId,
+                                  Check_Out_Reason_Id: reasonId,
+                                  Appt_Note_Txt: self.appointmentInfo.notesValue
+                                  //ProfileUpdated: true
+                             };
+                        }
+                        updateApptInfo(saveParams);
+                        // destroy the modals custom scope
+                        $modalScope.$destroy();
+                    }
+                });
+            }
+           
+            //Client_Phone_No": "2352228956",
+            //"Client_Email_Txt": "test@gmail.com",
+            //"Appt_Reminder_Preference_Cd": "E",
+            //"Client_Mobile_No": "9253144212",
+            //"Appt_Note_Txt": "sample string 6",
+            self.appointmentInfo.notesValue = "";
+            self.appointmentInfo.Appointment_Note = "Lorem ipsum dolor sit amet, quis nostro his cu, est agam vero temporibus ne. Mei te oblique corpora deleniti. An quis oratio tacimates est. Vero omnes iudico eum ne, usu omnes ponderum torquatos ne.";
+            self.appointmentInfo.noteLength = 1500 - self.appointmentInfo.Appointment_Note.length;
+
+            /*To watch the notes changes*/
+            if (!self.appointmentInfo.Action.IsSaveClose) {
+                console.log("--->>>>>>>>>>>>>>>>>>");
+                $scope.$watch(
+                    function () {
+                        return self.appointmentInfo.notesValue;
+                    },
+                    function () {
+                        if (self.appointmentInfo.notesValue !== apptInfoBackUp.notesValue) {
+                            self.appointmentInfo.Action.IsSaveClose = true;
+                        } else if (disableSaveAndClose()) {
+                            self.appointmentInfo.Action.IsSaveClose = false;
+                        }
+                    }
+                );
+            }
+
+            /*To change the check box - always one checkbox should be in selected mode*/
+            self.appointmentInfo.checkPhoneOrEmail = function (type) {
+
+                if (type === reminderPreferenceValues.TEXT) {
+                    self.appointmentInfo.Appointment.Is_Email = false;
+                    self.clientForm.hasEmail = false;
+                }
+                else if (type === reminderPreferenceValues.EMAIL) {
+                    self.appointmentInfo.Appointment.Is_Mobile = false;
+                    self.clientForm.hasMobilePhone = false;
+                }
+            }
+
+            self.appointmentInfo.Appointment["Is_Mobile"] = self.appointmentInfo.Appointment.Appt_Notification_Pref_Cd === 'N' ? false : self.appointmentInfo.Appointment.Appt_Notification_Pref_Cd === 'T' ? true : false;
+            self.appointmentInfo.Appointment["Is_Email"] = self.appointmentInfo.Appointment.Appt_Notification_Pref_Cd === 'N' ? false : self.appointmentInfo.Appointment.Appt_Notification_Pref_Cd === 'E' ? true : false;
+
+            console.log("===>>>>>");
+            apptInfoBackUp = angular.copy(self.appointmentInfo);
+            console.log(apptInfoBackUp);
+        }
+
+        function updateApptInfo(saveParams) {
+
+            console.log(saveParams);
+            updateAppointment.save(saveParams, function (data) {
+                console.log(data);
+                if (data.Response.Is_Success) {
+                    closePopup();
+                    toaster.toastSaveSuccess();
+                }
+            });
+        }
+
+        /**
+         * Failure handler function for the appointment info.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentInfoFailure
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetAppointmentInfoFailure() {
+
+        }
+
+        /**
+         * Finally handler function for the appointment info.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentInfoFinally
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetAppointmentInfoFinally() {
+
+        }
+
+        // Launch, then wait for both queries to complete.
+        query.$promise.then(handleGetAppointmentInfoSuccess, handleGetAppointmentInfoFailure).finally(handleGetAppointmentInfoFinally);
+
+    }
+
+    /*To reset client information with N/A*/
+    function resetClientInfo(clientInfo) {
+
+        /*To concat first , middle and last name..*/
+        var fullName = getFullName(clientInfo);
+        self.appointmentInfo.Appointment.ClientInfo["Full_Name"] = fullName || fullName;
+       
+        self.appointmentInfo.Appointment.ClientInfo.Last4SSN = clientInfo.Last4SSN || 'N/A';
+        self.appointmentInfo.Appointment.ClientInfo.Client_Rating = clientInfo.Client_Rating || 'N/A';
+        self.appointmentInfo.Appointment.ClientInfo.Service_Type = clientInfo.Service_Type || 'N/A';
+    }
+    /*To reset appointment information with N/A*/
+    function resetAppointmentInfo(appointment) {
+        self.appointmentInfo.Appointment.Originating_System = appointment.Originating_System || 'N/A';
+        self.appointmentInfo.Appointment["Appt_Start_And_End_Time"] = appointment.StartDateTime && appointment.EndDateTime ? moment(appointment.StartDateTime).format(timeFormat.SHORT_HOUR_FORMAT) + "-" + moment(appointment.EndDateTime).format(timeFormat.SHORT_HOUR_FORMAT) : 'N/A';
+        self.appointmentInfo.Appointment["Appt_Month_Day"] = appointment.StartDateTime ? moment(appointment.StartDateTime).format(timeFormat.MONTH_NAME_DATE_FORMAT) : 'N/A';
+  
+    }
+    /*To reset office information with N/A*/
+    function resetOfficeInfo(office) {
+        
+        var addressLine = "", locationStr = "",  officeId = "";
+        officeId = office.Office_Id || "";
+        addressLine += office.Address_Line_1_Txt || "";
+        addressLine += office.Address_Line_2_Txt || "";
+
+        locationStr = officeId.length > 0 && addressLine.length > 0 ? officeId + "-" + addressLine : addressLine.length > 0 ? addressLine : officeId;
+        self.appointmentInfo.Office["Location_Str"] = locationStr || 'N/A';
+        
+    }
+    /*To reset employee information with N/A*/
+    function resetEmployeeInfo(employee) {
+
+        var employeeStr = getFullName(employee);
+        self.appointmentInfo.Employee["Tax_Pro"] = employeeStr || 'N/A';
+
+    }
+
+    /*To get appointment history*/
+    self.getAppointmentHistory = function() {
+
+    /*To form the api query*/
+        var appointmentId = $scope.apptId,
+        appointmentHistoryParams = {
+            Appointment_Id: parseInt(appointmentId)
+        };
+    /*To make rest api call*/
+        var query = apptHistory.get(appointmentHistoryParams);
+
+        /**
+        * Success handler function for the appointment history.
+        * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistorySuccess
+        * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+        */
+        function handleGetAppointmentHistorySuccess(apptHistory) {
+
+            self.appointmentHistory = apptHistory.Response;
+        }
+
+        /**
+         * Failure handler function for the appointment history.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistoryFailure
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetAppointmentHistoryFailure() {
+
+        }
+
+        /**
+         * Finally handler function for the appointment history.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistoryFinally
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetAppointmentHistoryFinally() {
+
+        }
+
+        // Launch, then wait for both queries to complete.
+        query.$promise.then(handleGetAppointmentHistorySuccess, handleGetAppointmentHistoryFailure).finally(handleGetAppointmentHistoryFinally);
+
+    }
+            
+    /*To get client info based on the client id*/
+    self.showClient = function () {
+       
+        var clientId = self.appointmentInfo.Appointment.ClientInfo.Client_Id;
+
+        /*To form the api query*/
+        var clientInfoParams = {
+            Client_Id: parseInt(clientId)
+        };
+        /*To make rest api call*/
+        var query = clientInfo.get(clientInfoParams);
+
+        query.$promise.then(function (clientInfo) {
+            /*To display history info in UI*/
+            self.clientForm = clientInfo.Response[0];
+            
+            /*To compare with appointment clientinfo*/
+            compareClientInfo(self.clientForm);
+        }, function (res) { });
+
+        self.showClientInfo = true;
+
+    }
+    /*To compare client info from appointment and client info from api*/
+    function compareClientInfo(clientInfo) {
+
+        self.clientForm.PhoneType = self.clientForm.PhoneType || 'Home';
+
+        var fullName = getFullName(clientInfo);
+        if (self.appointmentInfo.Appointment.Full_Name !== fullName) {
+            self.appointmentInfo.Appointment.ClientInfo["Full_Name"] = fullName || 'N/A';
+        }
+        if (self.appointmentInfo.Appointment.ClientInfo.Last4SSN !== clientInfo.Last4SSN){
+            self.appointmentInfo.Appointment.ClientInfo.Last4SSN = clientInfo.Last4SSN || 'N/A';
+        }
+
+        self.clientForm.hasPhone = false;
+        self.clientForm.hasMobilePhone = false;
+        self.clientForm.hasEmail = false;
+
+        clientInfoBackup = angular.copy(self.clientForm);
+        //self.appointmentInfo.isClientInfoUpdated = false;
+        //self.appointmentInfo.Action.IsSaveClose = false;
+        console.log("======>>>>>>>>>>>>>>");
+        console.log(self.appointmentInfo.Action.IsSaveClose);
+        if (!self.appointmentInfo.Action.IsSaveClose) {
+            console.log(".......");
+
+        $scope.$watch(
+            function () {
+                return self.clientForm.PhoneType;
+            },
+            function () {
+                if (self.clientForm.PhoneType !== clientInfoBackup.PhoneType) {
+                    self.appointmentInfo.Action.IsSaveClose = true;
+                } else if (disableSaveAndClose()) {
+                    self.appointmentInfo.Action.IsSaveClose = false;
+                }
+            }
+        );
+        
+        $scope.$watch(
+            function () {
+                return self.clientForm.Phone_No;
+            },
+            function () {
+                if (self.clientForm.Phone_No !== clientInfoBackup.Phone_No) {
+                    self.appointmentInfo.Action.IsSaveClose = true;
+                } else if (disableSaveAndClose()) {
+                    self.appointmentInfo.Action.IsSaveClose = false;
+                }
+            }
+        );
+
+        $scope.$watch(
+            function () {
+                return self.clientForm.MobilePhone;
+            },
+            function () {
+                if (self.clientForm.MobilePhone !== clientInfoBackup.MobilePhone) {
+                    self.appointmentInfo.Action.IsSaveClose = true;
+                } else if (disableSaveAndClose()) {
+                    self.appointmentInfo.Action.IsSaveClose = false;
+                }
+            }
+        );
+        
+        $scope.$watch(
+            function () {
+                return self.clientForm.Email_Txt;
+            },
+            function () {
+                if (self.clientForm.Email_Txt !== clientInfoBackup.Email_Txt) {
+                    self.appointmentInfo.Action.IsSaveClose = true;
+                    console.log("Email updated..");
+                } else if (disableSaveAndClose()) {
+                    self.appointmentInfo.Action.IsSaveClose = false;
+                }
+            }
+        );
+        $scope.$watch(
+           function () {
+               return self.appointmentInfo.Appointment.Is_Mobile;
+           },
+           function () {
+               if (self.appointmentInfo.Appointment.Is_Mobile !== apptInfoBackUp.Appointment.Is_Mobile) {
+                   self.appointmentInfo.Action.IsSaveClose = true;
+                   console.log("reminder preference changed..");
+               } else if (disableSaveAndClose()) {
+                   self.appointmentInfo.Action.IsSaveClose = false;      
+               }
+           }
+       );
+        $scope.$watch(
+            function () {
+                return self.appointmentInfo.Appointment.Is_Email;
+            },
+            function () {
+                if (self.appointmentInfo.Appointment.Is_Email !== apptInfoBackUp.Appointment.Is_Email) {
+                    self.appointmentInfo.Action.IsSaveClose = true;
+                    console.log("reminder preference changed..");
+                } else if (disableSaveAndClose()) {
+                    self.appointmentInfo.Action.IsSaveClose = false;
+                }
+            }
+        );
+     }
+
+    }
+
+    function disableSaveAndClose() {
+        var isDisable = false;
+        console.log(self.clientForm);
+        if ((self.appointmentInfo.notesValue === apptInfoBackUp.notesValue && self.clientForm  === undefined) || (self.appointmentInfo.notesValue === apptInfoBackUp.notesValue && self.clientForm && self.appointmentInfo.Appointment.Is_Email === apptInfoBackUp.Appointment.Is_Email
+                && self.appointmentInfo.Appointment.Is_Mobile === apptInfoBackUp.Appointment.Is_Mobile
+                && self.clientForm.Email_Txt === clientInfoBackup.Email_Txt && self.clientForm.MobilePhone === clientInfoBackup.MobilePhone
+                && self.clientForm.PhoneType === clientInfoBackup.PhoneType && self.clientForm.Phone_No === clientInfoBackup.Phone_No)) {
+
+            isDisable = true;
+            console.log("disable btn...");
+        }
+        return isDisable;
+    }
+    /*To concat all names (First, Middle and Last)*/
+    function getFullName(data) {
+
+        var fullName = "";
+        if (data.First_NM) {
+            fullName += data.First_NM;
+        }
+        if (data.Middle_NM) {
+            fullName += fullName.length > 0 ? " " + data.Middle_NM : data.Middle_NM;
+        }
+        if (data.Last_NM) {
+            fullName += fullName.length > 0 ? " " + data.Last_NM : data.Last_NM;
+        }
+        return fullName;
+    }
+    /*To display error message*/
+    function triggerErrorMessage(callBack) {
+        /*To get form scope*/
+        var formScope = angular.element(document.querySelector('[name="editClientInfo"]')).scope().editClientInfo;
+
+        self.clientForm.hasEmail = self.appointmentInfo.Appointment.Is_Email && formScope.email.$invalid ? true : false;
+        self.clientForm.hasMobilePhone = self.appointmentInfo.Appointment.Is_Mobile && formScope.mobilePhone.$invalid ? true : false;
+        self.clientForm.hasPhone = formScope.phoneNo.$invalid ? true : false;
+        var isValid = !self.clientForm.hasEmail && !self.clientForm.hasMobilePhone && !self.clientForm.hasPhone ? true : false;
+        callBack(isValid);
+    }
+    /*To close popup*/
+    function closePopup() {
+        // close the modal
+        $scope.activeModal.close();
+        $scope.activeModal = undefined;
+
+        // destroy the modals custom scope
+        $scope.$destroy();
+    }
+
+    /*Close pop up function*/
+    self.close = function () {
+        
+        if (self.clientForm) {
+            triggerErrorMessage(function (isValid) {
+                if (isValid) {
+                    closePopup();
+                } 
+            });
+        } else {
+            closePopup();
+        }
+    }
+
+    /**
+     * Method for getting tax data required for Prior client's pre interview screen
+     * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#getTaxData
+     * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+     * @function
+     */
+    self.getTaxData = function () {
+
+        //launch tax details Api
+        getTaxDataDetails();
+
+        //launch questions api
+        getQuestions();
+        
+        /**
+         * Success handler function for the tax data.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetTaxDataSuccess
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetTaxDataSuccess(taxDataInfo) {
+
+            self.taxDataDetails = taxDataInfo.Response;
+
+            self.balanceVal = true;
+
+            if (self.taxDataDetails.Balance_Due_Amt === 0 || self.taxDataDetails.Balance_Due_Amt === null) {
+
+                if (self.taxDataDetails.Refund_Amt > 0) {
+                    self.refundVal = true;
+                    self.balanceVal = false;
+                }
+                
+            }
+
+        }
+
+        /**
+         * Failure handler function for the tax data.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetTaxDataFailure
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetTaxDataFailure() {
+            
+        }
+
+        /**
+         * Finally handler function for the tax data.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetTaxDataFinally
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetTaxDataFinally() {
+
+        }
+
+        /**
+         * Function to call the API to request tax data for a prior client.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#getTaxData
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function getTaxDataDetails() {
+
+            var taxDataParams = {
+                Client_Id: self.appointmentInfo.Appointment.ClientInfo.clientId,
+                Gi_Id: self.appointmentInfo.Appointment.ClientInfo.giId,
+                //Enterprise_Id: self.provider.Appointment.ClientInfo.enterpriseId
+            };
+            var query = taxData.get(taxDataParams);
+
+            // Launch, then wait for both queries to complete.
+            query.$promise.then(handleGetTaxDataSuccess, handleGetTaxDataFailure).finally(handleGetTaxDataFinally);
+        };
+
+    };
+
+    function getQuestions(){
+        console.log("getQuestions");
+        /*To form the api query*/
+        var questionTextParams = {
+            //Question_Txt: questionText
+        };
+        /*To make rest api call*/
+        var query = bestMatchQuestions.get(questionTextParams);
+
+        /**
+       * Success handler function for the appointment history.
+       * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistorySuccess
+       * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+       */
+        function handleGetBestMatchQuestionsSuccess(bestMatchQuestions) {
+            console.log("bestMatchQuestions.....");
+
+            console.log(bestMatchQuestions);
+            self.bestMatchQuestions = bestMatchQuestions.Response;
+        }
+
+        /**
+         * Failure handler function for the appointment history.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistoryFailure
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetBestMatchQuestionsFailure() {
+
+        }
+
+        /**
+         * Finally handler function for the appointment history.
+         * @name appointmentDetailsModal.controllers.appointmentDetailsModalCtrl#handleGetAppointmentHistoryFinally
+         * @propertyOf appointmentDetailsModal.controllers.appointmentDetailsModalCtrl
+         */
+        function handleGetBestMatchQuestionsFinally() {
+
+        }
+
+        // Launch, then wait for both queries to complete.
+        query.$promise.then(handleGetBestMatchQuestionsSuccess, handleGetBestMatchQuestionsFailure).finally(handleGetBestMatchQuestionsFinally);
+
+    }
+
+
+}]);

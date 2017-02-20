@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<!-- created by jampani lst 4 digits of id: 3224 -->
+		<title>
+		</title>
+		<meta>
+		<script type="text/javascript" src="jampaniweek7.js"></script>
+		</head>
+		<body>
+			<h1>Fun with Factors</h1>
+			<p>enter an integer to find out all the factors for that number, or if a number is prime, if there are no factors.
+			<p>Enter an Integer: <input type="text" id="inputTextBox"/></p>
+			<p><input type="button" id="factorButton" value="Find Factors"/>
+			</p>
+			<p><input type="button" id="reloadButton" value="reloadpage"/>
+			</p>
+			</body>
+			</html>

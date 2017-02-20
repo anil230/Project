@@ -1,0 +1,200 @@
+'use strict';
+
+/**
+ * Backing controller for the dayCalendar directive.  Handles data transformations and extrapolations to drive the view.
+ * @class dayCalendar.controllers.dayCalendarCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('dayCalendarCtrl', ['$scope', '$filter', 'blockSelection', 'dateUtil', 'calendarEvents', 'alertLevel', 'timeFormat',
+    function ($scope, $filter, blockSelection, dateUtil, calendarEvents, alertLevel, timeFormat) {
+
+        console.log("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    // private vars
+    var self = this,
+        columnFilter = $filter('columnFilter'),
+        officeColumnFilter = $filter('officeColumnFilter'),
+        columnOrder = $filter('orderBy'),
+        associateColumnFilter = $filter('associateColumnFilter');
+
+
+    console.log("#############################");
+    console.log(self.calendarType());
+    console.log(self.settings());
+  
+    /**
+     * Columns filtered by the panel settings.
+     * @name dayCalendar.controllers.dayCalendarCtrl#filteredColumns
+     * @propertyOf dayCalendar.controllers.dayCalendarCtrl
+     */
+    self.filteredColumns = null;
+
+    /**
+     * Length of the current column collection.  Used for view sizing.
+     * @name dayCalendar.controllers.dayCalendarCtrl#columnCount
+     * @propertyOf dayCalendar.controllers.dayCalendarCtrl
+     */
+    self.columnCount = 0;
+
+    /**
+    * Get the index of the currently selected column in the filtered column collection.
+    * @name dayCalendar.controllers.dayCalendarCtrl#getSelectedColumnIndex
+    * @methodOf dayCalendar.controllers.dayCalendarCtrl
+    * @function
+    * @return Number
+    */
+    self.getSelectedColumnIndex = function () {
+        var result = 0;
+        if (self.filteredColumns && self.selectedColumn) {
+            result = self.filteredColumns.indexOf(self.selectedColumn);
+        }
+        return result;
+    };
+
+    /**
+    * Get the date time for the current selection.
+    * @name dayCalendar.controllers.dayCalendarCtrl#getSelectedDateTime
+    * @methodOf dayCalendar.controllers.dayCalendarCtrl
+    * @function
+    * @return Number
+    */
+    self.getSelectedDateTime = function () {
+        var result;
+        if (self.filteredColumns && self.selectedColumn && self.selectedBlock) {
+            result = moment(self.selectedBlock.StartDateTime);
+        }
+        return result;
+    };
+
+    /**
+    * Get the time format for the calendar.
+    * @name dayCalendar.controllers.dayCalendarCtrl#getTimeFormat
+    * @methodOf dayCalendar.controllers.dayCalendarCtrl
+    * @function
+    * @return Number
+    */
+    self.getTimeFormat = function () {
+        return timeFormat.DAY;
+    };
+
+    /**
+    * Notify that a column selection has occurred.
+    * @name dayCalendar.controllers.dayCalendarCtrl#onColumnHeaderClicked
+    * @methodOf dayCalendar.controllers.dayCalendarCtrl
+    * @function
+    * @param {column} Object
+    */
+    self.onColumnHeaderClicked = function (column) {
+        $scope.$emit(calendarEvents.COLUMN_SELECTED, column);
+    };
+
+    /**
+     * Update the filtered columns based on the settings configuration.
+     * @name dayCalendar.services.dayCalendarCtrl#setFilteredColumns
+     * @methodOf dayCalendar.services.dayCalendarCtrl
+     * @private
+     * @function
+     */
+    function setFilteredColumns() {
+        console.log(self.filteredColumns);
+        console.log("associateSortFunction========>>>>>>>>>>>>>>>>");
+        var settings = self.settings(),
+            filtered = undefined,
+            sorted = undefined;
+
+        if (self.usesOfficeColumnFilter() === true) {
+            console.log("=====================================");
+            filtered = officeColumnFilter(self.calendarData, [self.selectedRole()]);
+        }
+        else {
+            console.log("================1111=====================");
+            console.log(settings);
+            console.log(settings.showRoles);
+            filtered = columnFilter(self.calendarData, settings.showRoles, settings.showTaxProsByRating, settings.showLanguage, settings.showAssociatesById);
+            console.log(filtered);
+        }
+        console.log("test======>>>>>>>>>>>>>>>>>>>>>>");
+        console.log(settings.sortByApptCalendar);
+        console.log(self.filteredColumns);
+        //Default sort by Appt Calendar for appointments
+        if (settings.sortByApptCalendar) {
+            console.log("!!!!!!!!!!!!!!!!");
+            console.log(sorted);
+            sorted = associateColumnFilter(filtered, settings.showRoles, settings.associateSortFunction(filtered));
+            console.log(sorted);
+            self.filteredColumns = sorted;
+        } else if (self.defaultSort()) {
+            console.log("4444444444444444444");
+
+            function sortApptCalendar(employee) {
+                console.log("2222222222222222222222222222222");
+                console.log(employee);
+                console.log(filtered);
+            }
+            sorted = associateColumnFilter(filtered, settings.showRoles, sortApptCalendar(filtered));
+            console.log(sorted);
+            self.filteredColumns = sorted;
+        }
+        else {
+            sorted = columnOrder(filtered, settings.associateSortFunction, settings.associateSortReverse);
+            self.filteredColumns = sorted;
+        }
+
+        // if there is a needs attention column, add it to the filtered set.  needs attention is left out of the filter
+        // intentionally, for now.
+        if (self.needsAttnAppts) {
+            self.filteredColumns.splice(0, 0, self.needsAttnAppts);
+        }
+        console.log(self.filteredColumns);
+        console.log(self.filteredColumns.length);
+
+        self.columnCount = self.filteredColumns.length;
+    }
+
+    /**
+     * Setup a watch to monitor changes to the calendar data and build a filtered set.
+     */
+    $scope.$watchGroup([
+            function () {
+                return self.calendarData;
+            },
+            function () {
+                return self.needsAttnAppts;
+            }
+        ],
+        function (values) {
+            console.log("Calendar Data........");
+            setFilteredColumns();
+        }
+    );
+
+    /**
+    * Setup a watch to monitor changes to the selectedRole.
+    */
+    $scope.$watch(
+        function () {
+            return self.selectedRole();
+        },
+        function (value) {
+            console.log("Role.......");
+            console.log(self.usesOfficeColumnFilter());
+            if (self.usesOfficeColumnFilter() === true) {
+                setFilteredColumns();
+            }
+        }
+    );
+
+    /**
+     * Setup a watch to monitor changes to the filter settings and apply the filter.
+     */
+    $scope.$watch(
+        function () {
+            return self.settings();
+        },
+        function (value) {
+            console.log("settings===>>>>>>>>>>>>>>>>>>>>>>");
+            setFilteredColumns();
+        },
+        true    // this is a deep watch
+    );
+
+}]);

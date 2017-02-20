@@ -1,0 +1,38 @@
+/*created by Venu Jampani
+last 4 digits of id: 3224*/
+
+body			{font-family: "trebuchet ms", helvetica, sans-serif;
+			margin-top: 25px;
+			margin-bottom: 25px;
+			margin-right: 25px;
+			margin-left: 25px;
+			background-repeat: no-repeat;
+			background-size: 100%;
+			background-color: lightblue;
+			}
+.banner          {background-color: Yellow;
+			font-weight: bolder;
+			height: 50px;}
+			
+a			{text-decoration: none;}
+nav			{font-weight: bold;
+			color:white;
+			border: 2px solid RoyalBlue;
+			text-align: center;
+			background-color: RoyalBlue;
+			}
+nav:hover ul  {display: block;}
+nav ul li            {display: inline-block;
+			border-top: 2px solid RoyalBlue;
+			background-color: white;
+			color: black;
+			width: 100px;
+			margin: 0;
+			padding: 0;
+			}
+#content        {font-family: Impact;
+			}
+div>p		{font-family: Courier New;
+			}
+			
+

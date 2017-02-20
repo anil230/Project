@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+	<!-- Created by Venu Babu Jampani.
+		last 4 digits id: 3224 -->
+        <title>My First Page</title>
+		<style type="text/css">
+		    body      {background-color: #C63D0F;}
+			div		  {background-color: #FDF3E7;
+					  margin-top:  25px;
+					  margin-bottom: 100px;
+					  margin-left:100px;
+					  margin-right: 100px
+					  
+					  }
+					  </style>
+		<script type=text/javascript">
+			// accepts the name of user and displays a welcome message:
+			
+			// declare a variable, and bring up a prompt to accept user name:
+			var userName =window.prompt("Enter Your Name") ;
+			// display the welcome message
+			document.write ("<h1>hello " +userName + "! Welcome to the world of JavaScript</h1>");
+		</script>
+	</head>
+	<body>
+	    <div>
+		    <h1>Welcome to CIS 5610</h1>
+			<p>I love u</p>
+			</div>
+			</body>
+
+</html>

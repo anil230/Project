@@ -1,0 +1,46 @@
+<!--<div>
+    <md-list>
+        <md-list-item ng-repeat="filter in associateFilter.filterTree"
+                      ng-class="::{'indent': filter.level === 2, 'indent-two': filter.level === 3}"
+                      class="list-highlight">
+            <md-checkbox class="md-primary filter-list-checkbox"
+                         ng-model="filter.value"
+                         ng-click="associateFilter.toggleFilter(filter)"
+                         aria-label="{{::filter.label}}">
+            </md-checkbox>
+            {{::filter.label}}
+        </md-list-item>
+    </md-list>
+    <md-radio-group ng-model="associateFilter.language">
+        <md-radio-button ng-repeat="radio in associateFilter.languageRadios"
+                         ng-value="radio.value"
+                         class="md-primary radio-indent">
+            {{::radio.label}}
+        </md-radio-button>
+    </md-radio-group>
+    <md-divider></md-divider>
+    <hrb-dm-clear-input class="no-bottom-padding no-error" shadow-text="associateFilter.associateWatermark" text="associateFilter.associateSearch"></hrb-dm-clear-input>
+    <md-list>
+        <md-list-item class="list-highlight"
+                      ng-repeat="employee in associateFilter.associates() | columnFilter:associateFilter.roles:associateFilter.ratings:associateFilter.language | filter:associateFilter.associateSearch track by employee.Employee.Employee_Id">
+            <md-checkbox class="md-primary filter-list-checkbox"
+                         ng-model="employee.$filterActive"
+                         ng-click="associateFilter.toggleEmployee(employee)"
+                         aria-label="Associate Option">
+            </md-checkbox>
+            <span class="title">{{::employee.Employee | employeeName}}</span>
+        </md-list-item>
+    </md-list>
+</div>-->
+
+
+<div>
+    <md-list>
+        <md-list-item ng-repeat="criteria in associateFilter.sortCriteria" ng-click="associateFilter.setSelectedSort(criteria)">
+            <div class="criteria" ng-class="{'selected': associateFilter.selectedSort === criteria}">{{::criteria.label}}</div>
+        </md-list-item>
+    </md-list>
+    <!--<md-checkbox ng-model="associateSort.reverse" aria-label="Sort Reverse">
+        Sort Reverse
+    </md-checkbox>-->
+</div>

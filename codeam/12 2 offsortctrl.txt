@@ -1,0 +1,175 @@
+'use strict';
+
+/**
+ * Backing controller for the officeSortCtrl directive.  Handles data transformations and extrapolations to drive the view.
+ * @class calendarSettings.controllers.officeSortCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('officeSortCtrl', ['$scope', 'officeSort', 'employeeRoles', 'calendarSettingsEvents', 'taxProRatings', function ($scope, officeSort, employeeRoles, calendarSettingsEvents, taxProRatings) {
+
+    // private vars
+    var self = this,
+        userChangedSort = false;
+    console.log("================");
+    console.log(self.sortByApptCalendar);
+    /**
+     * The available sort criteria for the employees.
+     * @name calendarSettings.controllers.officeSortCtrl#sortCriteria
+     * @propertyOf calendarSettings.controllers.officeSortCtrl
+     */
+    self.sortCriteria = [
+        {
+            label: 'Certification Level',
+            value: officeSort.CERT_LEVEL            
+        },
+        {
+            label: 'Bilingual',
+            value: officeSort.BILINGUAL         
+        },
+        {
+            label: 'Last Name',
+            value: officeSort.LASTNAME          
+        }
+    ];
+    console.log("66666666666666666666666666666666666666" + self.showApptCalendar());
+    if (self.showApptCalendar()) {
+        console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        self.sortCriteria.unshift({
+            label: 'Appt Calendar',
+            value: officeSort.ALL
+
+
+        });
+
+        console.log(self.sortCriteria);
+    }
+
+    /**
+     * The active sort criteria for the employees.  
+     * Defaults to the first selection in the sort criteria collection.
+     * @name calendarSettings.controllers.officeSortCtrl#selectedSort
+     * @propertyOf calendarSettings.controllers.officeSortCtrl
+     */
+    self.selectedSort = self.sortCriteria[0];
+
+    /**
+     * Set a new selected sort value.
+     * @name calendarSettings.controllers.officeSortCtrl#setSelectedSort
+     * @propertyOf calendarSettings.controllers.officeSortCtrl
+     * @function
+     * @param {criteria} Object
+     */
+    self.setSelectedSort = function (criteria) {
+        // set an internal flag
+        userChangedSort = true;
+
+        // update the criteria
+        self.selectedSort = criteria;
+    };
+    /**
+   * Sort the employee object by its Appt Calendar(TP with WS, Availability).  
+   * The sort needs to go in descending order initially, so we reverse the values.
+   * @private
+   * @function
+   * @param {employee} Object
+   */
+    function sortApptCalendar(employee) {
+
+    }
+
+    
+    /**
+ * Sort the employee object by its certification level.
+  * @private
+ * @function
+ * @param {employee} Object
+ */
+    function sortByCertLevel(employee) {
+        console.log("=========================");
+        console.log(employee);
+        return ((taxProRatings.LEVEL_FIVE - employee.Employee.TP_Rating) + ',' + (1.0 - employee.Employee.Client_Retention_Level_Nbr));
+    }
+
+    /**
+     * Sort the employee object by its bilingual status.
+      * @private
+     * @function
+     * @param {employee} Object
+     */
+    function sortEmployeeBilingual(employee) {
+        return !employee.Employee.TP_Bilingual + ',' + employee.Employee.Last_NM;
+    }
+  
+    /**
+     * Sort the employee object by its Last Name
+     * @private
+     * @function
+     * @param {employee} Object
+     */
+    function sortEmployeeLastName(employee) {
+        return employee.Employee.Last_NM + ',' + employee.Employee.First_NM;
+    }
+
+    /**
+    * Do not sort the employee objects.
+    * @private
+    * @function
+    */
+    function sortEmployeeNone() {
+        return 0;
+    }
+
+    /**
+     * Setup a watch to monitor changes to the selected sort criteria and adjust the sorting function accordingly.
+     */
+    $scope.$watch(
+        function () {
+            return self.selectedSort;
+        },
+        function (criteria) {
+            // set the display label
+            self.description = criteria.label;
+            if (criteria.value === officeSort.ALL) {
+                self.sortByApptCalendar = true;
+            }
+            else {
+                self.sortByApptCalendar = false;
+            }
+            console.log("========================");
+            console.log(criteria);
+            console.log(employeeSort.APPT_CALENDAR);
+            console.log(officeSort.CERT_LEVEL);
+
+
+            // and the sorting function
+            switch (criteria.value) {
+                //case employeeSort.APPT_CALENDAR:
+                case officeSort.ALL:
+                    self.sortFunction = sortApptCalendar;
+                    break;
+                case officeSort.CERT_LEVEL:
+                    self.sortFunction = sortByCertLevel;
+                    break;
+                case officeSort.BILINGUAL:
+                    self.sortFunction = sortEmployeeBilingual;
+                    break;
+                case officeSort.LASTNAME:
+                    self.sortFunction = sortEmployeeLastName;
+                    break;
+                default:
+                    self.sortFunction = sortApptCalendar;
+            }
+            console.log("=========>>>>>>>>>>>>>>");
+            console.log(self.sortByApptCalendar);
+            console.log(self.sortFunction);
+
+            if (userChangedSort) {
+                // reset the flag
+                userChangedSort = false;
+
+                // dispatch an event to let any parent panel know that this control can be closed
+                $scope.$emit(calendarSettingsEvents.CLOSE_FLYOUT);
+            }
+        }
+    );
+}]);

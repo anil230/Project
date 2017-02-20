@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+     <!--created by jampani.
+     last 4 of id:3224-->
+	 
+	<title>Desision structures, Functions, loops and Arrays</title>
+	<script type="text/javascript" src="jampaniweek5.js"></script>
+	</head>
+	<body>
+	<h1>Lucky Lottery</h1>
+	<p>
+	<label>let's Play lottery </label>
+	<input type ="text" id="inputTextbox" style="width:40px;"/>
+	<input type="button" id="guessButton" onclick="lottery()" value = "TRY Your Luck"/>
+	</p>
+	<p id="lotteryMessage"></p>
+	<h1>Handling Arrays</h1>
+	<p>
+	<input type="button" id="arrayButton" onclick=
+	"createArray()" value="Create Array with 10 elements"/></p>
+	<p>
+	<input type="button" id="displayButton" onclick=
+	"displayArray()" value="display Array with 10 elements"/></p>
+	<p>
+	<input type="button" id="averageButton" onclick=
+	"findAverage()" value="Find average of  10 elements"/>
+	</p>
+	<p id "arrayMessage">
+	</p>
+	</body>
+	</html>
+	
+	
+	

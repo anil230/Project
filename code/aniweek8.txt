@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<!-- Created by jampani venu
+	last 4 of id: 3224 -->
+	<title>DOM TREE</title>
+	<meta charset ="utf-8"/>
+	<style type = "text/css">
+	img  {width: 50px; height; 50px;}
+	body  {margin:150px;}
+	table, tr, td {border: 1px solid black;
+					text-align: center;
+					border-collapse: collapse;
+				}
+				table {width: 500px;}
+	</style>
+	<script type="text/javascript" src="jampaniweek8.js">
+	</script>
+	</head>
+	<body>
+	<h1>Flip in Coins</h1>
+	<table>
+	<tr>
+		<td><img src="tails.jpg"/></td>
+		<td>Flip Coin to Play. Reset to reload page. App
+		Info for your browser information.</td>
+		<td><img src="heads.jpg"/></td>
+		</tr>
+		<tr>
+		<td><input type="button" id="flipBtn" value= "Flip Coin"/></td>
+		<td><input type="button" id="reloadBtn" value= "Reset"/></td>
+		<td><input type="button" id="appInfoBtn" value= "App. Info"/></td>
+		</tr>
+		</table>
+		<p>
+		<table>
+		<caption>Flip Coin Results</caption>
+		<thead>
+		<tr>
+		<td>Flip #</td>
+		<td>Heads or Tails?</td>
+		<td>Result</td>
+		</tr>
+		</thead>
+		<tbody id="tableBody">
+		</tbody>
+		</table>
+		</p>
+		<p id="appMessage"></p>
+		</body>
+		
+		
+
+</html>
+	

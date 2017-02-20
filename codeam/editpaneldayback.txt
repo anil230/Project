@@ -1,0 +1,164 @@
+'use strict';
+
+/**
+ * Backing controller for the edit panel day directive.  Handles data transformations and extrapolations to drive the view.
+ * @class editBlockPanel.controllers.editPanelDayCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('editPanelDayCtrl', ['$scope', '$timeout', '$filter', 'timeIntervals', 'timeFormat', 'calendarEvents', 'editPanelEvents', 'blockTypes', 'blockOperations', 'employeeRoles', 'verifyBlockMerge', 'scheduleViews',
+    function ($scope, $timeout, $filter, timeIntervals, timeFormat, calendarEvents, editPanelEvents, blockTypes, blockOperations, employeeRoles, verifyBlockMerge, scheduleViews) {
+
+    // private vars
+    var self = this,
+        roleFilter = $filter('editPanelDayFilter');
+
+    self.filteredBlocks = undefined;
+
+    self.blockTypes = blockTypes;
+
+    self.dummyBlock = {
+        StartDateTime: undefined,
+        EndDateTime: undefined,
+        Employee_Role_Id: self.selectedRole()
+
+    };
+
+    //set the isCreate to true as user has selected values from dropdown.
+    self.isCreate = false;
+
+    //available employee roles from constant
+    self.employeeRoles = employeeRoles;
+
+    //variable to determine checkmark value if schedules are available.
+    self.isScheduleAvailable = false;
+
+    //
+    self.toggleChecked = function () {
+        // wait till the ng-model binding updates the value
+        $timeout(function () {
+            //evaluate if check box is uncheked then remove all schedules. 
+            if (!self.isScheduleAvailable) {
+                removeAllBlocks();
+            }// this means we need to create a block.
+            else {
+                enabledBlockCreation();
+            }
+        });
+    };
+
+    function removeAllBlocks () {
+
+        var blocksShallowCopy = self.blocks().slice(),
+            blockOperation;
+
+        _.forEach(blocksShallowCopy, function (block) {
+            if (block.Employee_Role_Id === self.selectedRole()) {
+                blockOperation = {
+                    type: self.blockType(),
+                    op: blockOperations.DELETE,
+                    block: block,
+                    employee: self.selectedDay()
+                };
+
+                //emit the remove block event.
+                $scope.$emit(calendarEvents.BLOCK_CHANGED, blockOperation);
+            }
+        });
+
+        self.isCreate = false;
+    };
+
+    function updateFilteredBlocks() {
+        self.filteredBlocks = roleFilter(self.blocks(), self.selectedRole());
+       
+        //set the value of checkmark to true if schedules are available
+        self.isScheduleAvailable = self.filteredBlocks.length > 0 ? true : false;
+    }
+
+    function enabledBlockCreation() {
+        self.dummyBlock.StartDateTime = undefined;
+        self.dummyBlock.EndDateTime = undefined;
+        self.isCreate = true;
+    }
+
+    /**
+    * Setup a watch to monitor for block events.
+    */
+    $scope.$on(editPanelEvents.CREATE_BLOCK, function (event, blockOperation) {
+        if (blockOperation) {
+            enabledBlockCreation();
+        } 
+    });
+
+
+    /**
+    * Setup a watch to monitor for block changed events.
+    */
+    $scope.$on(calendarEvents.BLOCK_CHANGED, function (event, blockOperation) {
+        var checkBlockMerge = false;
+
+        if (blockOperation.op === blockOperations.CREATE) {
+            self.isCreate = false;
+            checkBlockMerge = true;
+        } else if(blockOperation.op === blockOperations.DELETE) {
+            self.isCreate = false;
+        } else if (blockOperation.op === blockOperations.UPDATE) {
+            checkBlockMerge = true;
+        }
+
+        if (checkBlockMerge) {
+            // check here to see if the change in the block should warrant a merge dialog.
+            // wait till after the update operation is processed.
+            $timeout(function () {
+                verifyBlockMerge.mergeBlockIfAdjacentToSilblings($scope, self.selectedDay(), blockOperation.block, self.blocks());
+            });
+        }
+    });
+
+    //watch to handle changes to the blocks collection.
+    $scope.$watchCollection(
+        function () {
+            return self.blocks();
+        },
+        function (value) {
+            updateFilteredBlocks();
+        }
+    );
+
+    //watch to handle selected Role.
+    $scope.$watch(
+        function () {
+            return self.selectedRole();
+        },
+        function (value) {
+            updateFilteredBlocks();
+        }
+    );
+
+    //watch to handle selected day change 
+    $scope.$watch(
+        function () {
+            return self.selectedDay();
+        },
+        function (value) {
+            updateFilteredBlocks();
+            checkSceduleIsDisabled();
+        }
+    );
+
+    function checkSceduleIsDisabled() {
+
+        if (self.selectedDay().isDisabled === undefined) {
+            var isLocked = false;
+            if (scheduleViews.STAFFING.value === self.calendarType()) {
+                var currentDate = new Date();
+                var selectedDate = self.selectedDay().Date;
+                if (moment(selectedDate) < moment(currentDate).startOf('day')) {
+                    isLocked = true;
+                }
+            }
+            self.selectedDay()["isDisabled"] = isLocked;
+        }
+    };
+    
+}]);

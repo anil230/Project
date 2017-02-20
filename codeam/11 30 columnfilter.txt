@@ -1,0 +1,54 @@
+'use strict';
+
+/**
+ * Filter for columns in the day calendar.  This operates on employees and includes them in the visible set based on the selected role and tax pro rating.
+ * @class core.filters.associateFilter
+ * @see https://docs.angularjs.org/api/ng/filter/filter
+ */
+app.filter('columnFilter', ['employeeRoles', 'taxProRatings', 'languagePreferences', function (employeeRoles, taxProRatings, languagePreferences) {
+
+    return function (input, roles, ratings, language, associateIds) {
+        var output = [],
+            employeeRoleEnumMap,
+            roleIntersection;
+
+        _.forEach(input, function (empWrapper) {
+            // for now, ignore wrappers without linked Employee models
+            if (empWrapper.Employee) {
+                if (associateIds && associateIds.length) {
+                    // if a non-empty assoicate list is specified we only search with it
+                    if (associateIds.indexOf(empWrapper.Employee.Employee_Id) >= 0) {
+                        // the associate was directly selected
+                        output.push(empWrapper);
+                    }
+                } else {
+                    // otherwise check for the other cirteria, starting with the language preference.
+                    if (language === languagePreferences.ALL || (language === languagePreferences.BILINGUAL && empWrapper.Employee.TP_Bilingual)) {
+                        // now check the employee roles
+                        employeeRoleEnumMap = _.map(empWrapper.Employee.EmployeeRoles, 'Employee_Role_Id');
+                        roleIntersection = _.intersection(roles, employeeRoleEnumMap);
+                        console.log("roleIntersection====>>>>>>>>>>>>>>");
+                        console.log(roleIntersection);
+                        //console.log(empWrapper.Employee.EmployeeRoles);
+                        console.log(roles);
+                        if (roleIntersection.length > 0 || (roles.length === 1 && roles.indexOf(employeeRoles.ALL) >= 0)) {
+                            // one of the users roles is being shown.
+                            output.push(empWrapper);
+                        }
+                        //} else if (employeeRoleEnumMap.indexOf(employeeRoles.TAX_PRO) >= 0) {
+                            
+                        //    // the employee is a tax pro.  see if the ratings criteria matches.
+                        //    if (ratings.indexOf(empWrapper.Employee.TP_Rating) >= 0) {
+                        //        console.log("44444444444444444");
+                        //        // rating matches
+                        //        output.push(empWrapper);
+                        //    } 
+                        //} 
+                    }
+                }
+            }
+        });
+
+        return output;
+    };
+}]);

@@ -1,0 +1,877 @@
+'use strict';
+
+/**
+ * Directive to render a view that represents a block that spans a time range in a given day.
+ * @name dayCalendar.directives.dayBlock
+ * @propertyOf dayCalendar.directives
+ * @see https://docs.angularjs.org/guide/directive
+ * @example
+ * <day-block></day-block>
+ */
+app.directive('dayBlock', ['$document', '$log', '$window', 'verifyBlockMerge', '$uibModal', 'browserEvents', 'blockTypes', 'timeFormat', 'calendarEvents', 'validationMessages', 'employeeRoles', 'changeLevel', 'peakNonPeakProvider','availabilityPopoverService',
+    function ($document, $log, $window, verifyBlockMerge, $uibModal, browserEvents, blockTypes, timeFormat, calendarEvents, validationMessages, employeeRoles, changeLevel, peakNonPeakProvider, availabilityPopoverService) {
+
+    return {
+        require: '^dayColumn',
+        restrict: 'E',
+        replace: true,
+        templateUrl: '/App/dayCalendar/templates/dayBlock.html',
+        scope: {
+            blockType: '&',
+            block: '=',
+            permissions: '&',
+            employee: '&',
+            selectedRole: '&'
+        },
+        controller: 'dayBlockCtrl',
+        controllerAs: 'dayBlock',
+        //bindToController: true,   // disabled for now
+        link: function (scope, element, attrs, dayColumnCtrl) {
+            // add our custom css class
+            element.addClass('day-block');
+
+            // Counters to help determine when a new interval has been dragged to
+            var initialStartMillis = 0,
+                initialEndMillis = 0,
+                initialStartIndex = 0,
+                initialEndIndex = 0,
+                initialIntervals = 0,
+                bottomIntervalsLimit = {},
+                topIntervalsLimit = {},
+                bottomIntervalsLimitOffset = 0,
+                topIntervalsLimitOffset = 0,
+                prevIntervals,
+                initialPageY = 0,
+                currentPageY = 0,
+                screenPageY = 0,
+                initialPageX = 0,
+                currentPageX = 0,
+                screenPageX = 0,
+                topOffsetForMoveEntire = 0,
+                bottomOffsetForMoveEntire = 0,
+                headersHeight = 200,
+                footersHeight = 50,
+                minimumBlockSize = 1,
+                appointmentMoveMatrix = [],
+                matrixInterval,
+                prevMatrixInterval,
+                initialMatrixInterval,
+                dragImage,
+                isMoveEntire = false,
+                mouseMoveHandler,
+                $handleTop,
+                $handleBottom,
+                $handleEntire,
+                scheduleCreatedByDragging,
+                dragToCreateBottomLimit;
+
+            if (scope.blockType() === blockTypes.SCHEDULE || scope.blockType() === blockTypes.AVAILABILITY) {
+                minimumBlockSize = 2;
+            }
+
+            var $scrollContainer = element.closest('.scroll-content')[0];
+
+            function updateBlockPosition() {
+                // Set top and height based on StartDateTime and EndDateTime
+                var startMoment = moment(scope.block.StartDateTime),
+                    endMoment = moment(scope.block.EndDateTime),
+                    startDateTime = startMoment.valueOf(),
+                    endDateTime = endMoment.valueOf(),
+                    blockPosition = dayColumnCtrl.getBlockPosition(startDateTime, endDateTime);
+                scope.top = blockPosition.top;
+                scope.height = blockPosition.height;
+                scope.timeSpanLabel = startMoment.format(timeFormat.SHORT_HOUR_FORMAT) + ' - ' + endMoment.format(timeFormat.SHORT_HOUR_FORMAT);
+            }
+
+            var isDialogOpen = false;
+            scope.isBlockDragging = false;
+
+            scope.setSelectedBlock = function () {
+                dayColumnCtrl.setSelectedBlock(scope.block);
+            }
+
+            function moveEntire() {
+                // Check for canEdit before moving a block, since moveEntire also applies to a single-click for canCreateChild.
+                    // Update also check for locked flag on AVAILABILITY block.  
+                    if ((scope.dayBlock.blockRules.canEdit && isDialogOpen === false) && !(scope.blockType() === blockTypes.AVAILABILITY && scope.dayBlock.isAvailabilityDisable)) {
+
+                    var delta = currentPageY - initialPageY;
+                    var numIntervals = delta > 0 ? Math.floor(delta / dayColumnCtrl.intervalHeight) : Math.ceil(delta / dayColumnCtrl.intervalHeight);
+                    var startMillis = initialStartMillis + (numIntervals * 15 * 60000);
+                    var endMillis = initialEndMillis + (numIntervals * 15 * 60000);
+
+                    // If even one interval has been dragged to, set isBlockDragging to distinguish this as a drag vs. a single-click
+                    if (numIntervals !== 0) {
+                        scope.isBlockDragging = true;
+                    }
+
+                    // Update StartDateTime when a new interval is dragged to
+                    if (numIntervals % minimumBlockSize === 0) {
+
+                        // Update StartDateTime & EndDateTime when dragging upward or downward to a new interval
+                        if (prevIntervals > numIntervals && numIntervals >= topIntervalsLimit.value - 1)
+                        {
+                            // Check if the resize will begin to overlap with another schedule, then show
+                            // a dialog to ask the user to confirm the merge.
+                            if (scope.blockType() === blockTypes.SCHEDULE &&
+                                    topIntervalsLimit.type === 'schedule' &&
+                                    numIntervals <= topIntervalsLimit.value - 2 &&
+                                    topIntervalsLimit.mergeTime) {
+                                isDialogOpen = true;
+                                verifyBlockMerge.launchMergeDialog(topIntervalsLimit.mergeTime, scope.block.EndDateTime)
+                                    .then(function () {
+                                        dayColumnCtrl.mergeWithPriorSchedule(scope.block);
+                                    })
+                                    .finally(function () {
+                                        isDialogOpen = false;
+                                    });
+                            }
+                            else if (numIntervals < bottomIntervalsLimit.value) {
+                                scope.block.StartDateTime = moment(startMillis).format(timeFormat.TIME_FORMAT);
+                                scope.block.EndDateTime = moment(endMillis).format(timeFormat.TIME_FORMAT);
+                                scope.dayBlock.notifyBlockDirty(changeLevel.INPROGRESS);
+                                scope.$apply();
+
+                                // Scroll the page upward when the top of the block is in range of the screen top
+                                if (screenPageY - topOffsetForMoveEntire < headersHeight && numIntervals + topIntervalsLimitOffset >= topIntervalsLimit.value) {
+                                    $scrollContainer.scrollTop -= 10;
+                                }
+                            }
+                        }
+                        else if (prevIntervals < numIntervals && numIntervals <= bottomIntervalsLimit.value + 1) {
+                            // Check if the resize will begin to overlap with another schedule, then show
+                            // a dialog to ask the user to confirm the merge.
+                            if (scope.blockType() === blockTypes.SCHEDULE &&
+                                    bottomIntervalsLimit.type === 'schedule' &&
+                                    numIntervals >= bottomIntervalsLimit.value + 2 &&
+                                    bottomIntervalsLimit.mergeTime) {
+                                isDialogOpen = true;
+                                verifyBlockMerge.launchMergeDialog(scope.block.StartDateTime, bottomIntervalsLimit.mergeTime)
+                                    .then(function () {
+                                        dayColumnCtrl.mergeWithNextSchedule(scope.block);
+                                    })
+                                    .finally(function () {
+                                        isDialogOpen = false;
+                                    });
+                            }
+                            else if (numIntervals > topIntervalsLimit.value) {
+                                scope.block.StartDateTime = moment(startMillis).format(timeFormat.TIME_FORMAT);
+                                scope.block.EndDateTime = moment(endMillis).format(timeFormat.TIME_FORMAT);
+                                scope.dayBlock.notifyBlockDirty(changeLevel.INPROGRESS);
+                                scope.$apply();
+
+                                // Scroll the page downward when the bottom of the block is in range of the screen bottom
+                                if (screenPageY + bottomOffsetForMoveEntire > $window.innerHeight - footersHeight && numIntervals - bottomIntervalsLimitOffset <= bottomIntervalsLimit.value) {
+                                    $scrollContainer.scrollTop += 10;
+                                }
+                            }
+                        }
+                    }
+
+                    prevIntervals = numIntervals;
+                }
+            }
+
+            function moveEntireAppointment() {
+                matrixInterval = dayColumnCtrl.getMatrixIndexes(currentPageX, currentPageY);
+
+                // Ensure the colIndex is always within the appointment matrix
+                if (matrixInterval.colIndex < 0) {
+                    matrixInterval.colIndex = 0;
+                }
+                if (matrixInterval.colIndex >= appointmentMoveMatrix.length) {
+                    matrixInterval.colIndex = appointmentMoveMatrix.length - 1;
+                }
+
+                // Ensure the intervalIndex is always within the appointment matrix
+                if (matrixInterval.intervalIndex < 0) {
+                    matrixInterval.intervalIndex = 0;
+                }
+                if (matrixInterval.intervalIndex >= appointmentMoveMatrix[0].length) {
+                    matrixInterval.intervalIndex = appointmentMoveMatrix[0].length - 1;
+                }
+
+                // If the mouse has moved over a different interval, determine whether that interval is
+                // a valid drop target.
+                if (matrixInterval.colIndex !== prevMatrixInterval.colIndex ||
+                    matrixInterval.intervalIndex !== prevMatrixInterval.intervalIndex) {
+                    
+                    // Only set the isBlockDragging flag to true once a new interval has been entered.
+                    // Until then, a mouseup will count as a click, and not a drag.
+                    scope.isBlockDragging = true;
+
+                    // Apply the change to the scope immediately to create the drag image in the DOM
+                    scope.$apply();
+
+                    // Check the matrix location to see if it is a valid drop location
+                    scope.isValidDrop = appointmentMoveMatrix[matrixInterval.colIndex][matrixInterval.intervalIndex].isValid;
+                    scope.hasWarning = appointmentMoveMatrix[matrixInterval.colIndex][matrixInterval.intervalIndex].hasWarning;
+
+                    scope.proposedMoveStartTime = moment(dayColumnCtrl.timeSlots[matrixInterval.intervalIndex - dayColumnCtrl.appointmentMoveInfo.mouseOffsetFromStart]).format(timeFormat.SHORT_HOUR_FORMAT);
+                    scope.proposedMoveEndTime = moment(dayColumnCtrl.timeSlots[matrixInterval.intervalIndex - dayColumnCtrl.appointmentMoveInfo.mouseOffsetFromStart + dayColumnCtrl.appointmentMoveInfo.numberIntervals]).format(timeFormat.SHORT_HOUR_FORMAT);
+
+                    // Move the drag image to the correct location
+                    if (!dragImage) {
+                        dragImage = element.find('.drag-image')[0];
+                        if (dragImage) {
+                            scope.dragDisplay = 'block';
+                        }
+                    }
+
+                    if (dragImage) {
+                        scope.dragLeftPosition = ((matrixInterval.colIndex - initialMatrixInterval.colIndex) * dayColumnCtrl.calendarSizes().colWidth) + 'px';
+                        scope.dragTopPosition = ((matrixInterval.intervalIndex - initialMatrixInterval.intervalIndex) * dayColumnCtrl.intervalHeight) + 'px';
+                        scope.$digest();
+                    }
+                }
+
+                prevMatrixInterval = matrixInterval;
+            }
+
+            function clickAndDragToCreate() {
+                // Selected role must not be ALL
+                if (scope.selectedRole() > 0 && !isDialogOpen) {
+                    var delta = currentPageY - initialPageY,
+                        numIntervals = delta > 0 ? Math.floor(delta / dayColumnCtrl.intervalHeight) : Math.ceil(delta / dayColumnCtrl.intervalHeight),
+                        startMillis = initialStartMillis + (numIntervals * 15 * 60000),
+                        endMillis = initialEndMillis + (numIntervals * 15 * 60000),
+                        millisToHeightFactor = 1 / 15 / 60000;
+
+                    // When initially dragging downward, and the drag has gone at least one interval
+                    if (!scope.isDraggingToCreate && !scope.isDialogOpen && numIntervals > 0 && numIntervals % minimumBlockSize === 0) {
+
+                        var mousedownTimeSlotMinutes = moment(scope.mousedownTimeSlot).minutes();
+                        // Mousedowns that are on or past the :15 or :45 should be rounded up to :30 or :00
+                        if (mousedownTimeSlotMinutes === 15 || mousedownTimeSlotMinutes === 45) {
+                            scope.mousedownTimeSlot = moment(scope.mousedownTimeSlot).add(15, 'm');
+                        };
+
+                        // Determine the limits for dragging downward
+                        var startMoment = moment(scope.mousedownTimeSlot);
+                        dragToCreateBottomLimit = dayColumnCtrl.getIntervalsLimits(
+                            blockTypes.SCHEDULE,
+                            {
+                                StartDateTime: startMoment.format(timeFormat.TIME_FORMAT),
+                                EndDateTime: startMoment.add(30, 'm').format(timeFormat.TIME_FORMAT)
+                            }
+                        )[1].value;
+
+                        // Check if a valid schedule can be created
+                        scheduleCreatedByDragging = dayColumnCtrl.canCreateSchedule(scope.block, scope.selectedRole(), scope.mousedownTimeSlot.valueOf());
+                        if (scheduleCreatedByDragging) {
+                            // Set the initial top & height of the block to create
+                            scope.topOfDragToCreateBlock = ((scope.mousedownTimeSlot - startMillis) * millisToHeightFactor + minimumBlockSize) * dayColumnCtrl.intervalHeight - 1 + 'px';
+                            scope.heightOfDragToCreateBlock = minimumBlockSize * dayColumnCtrl.intervalHeight - 4 + 'px';
+                            scope.proposedDragToCreateStart = moment(scheduleCreatedByDragging.startMillis).format(timeFormat.SHORT_HOUR_FORMAT);
+                            scope.proposedDragToCreateEnd = moment(scheduleCreatedByDragging.endMillis).format(timeFormat.SHORT_HOUR_FORMAT);
+
+                            scope.isDraggingToCreate = true;
+                            scope.$apply();
+                        }
+                        else if (!scope.isDialogOpen) {
+                            scope.isDraggingToCreate = false;
+                            scope.isDialogOpen = true;
+                            var modalInstance = scope.dayBlock.launchMessageModal(validationMessages.MAX_SCHEDULES_PER_DAY);
+                            modalInstance.result.then(function () {
+                                scope.isDialogOpen = false;
+                            });
+                        }
+                    }
+                    // On subsequent mouse moves to different intervals, set the new end time, and change the height of the drag image
+                    else if (scope.isDraggingToCreate && !scope.isDialogOpen && numIntervals >= 0 && numIntervals % minimumBlockSize === 0 && numIntervals <= dragToCreateBottomLimit) {
+                        scheduleCreatedByDragging.endMillis = scope.mousedownTimeSlot + (numIntervals + minimumBlockSize) * 15 * 60000;
+                        scope.heightOfDragToCreateBlock = (numIntervals + minimumBlockSize) * dayColumnCtrl.intervalHeight - 4 + 'px';
+                        scope.proposedDragToCreateEnd = moment(scheduleCreatedByDragging.endMillis).format(timeFormat.SHORT_HOUR_FORMAT);
+                        scope.$apply();
+                    }
+
+                    if (scheduleCreatedByDragging) {
+                        scope.isDragToCreateMinimumSize = (scheduleCreatedByDragging.endMillis - scheduleCreatedByDragging.startMillis) === 30 * 60000;
+                    }
+
+                    prevIntervals = numIntervals;
+                }
+                else if (!scope.isDialogOpen) {
+                    scope.isDraggingToCreate = false;
+                    scope.isDialogOpen = true;
+                    var modalInstance = scope.dayBlock.launchMessageModal(validationMessages.MUST_SELECT_ROLE);
+                    modalInstance.result.then(function () {
+                        scope.isDialogOpen = false;
+                    });
+            }
+            }
+
+            function resizeTop() {
+                if (isDialogOpen === false) {
+                    var delta = currentPageY - initialPageY;
+                    var numTopIntervals = delta > 0 ? Math.floor(delta / dayColumnCtrl.intervalHeight) : Math.ceil(delta / dayColumnCtrl.intervalHeight);
+                    var startMillis = initialStartMillis + (numTopIntervals * 15 * 60000);
+
+                    // Update StartDateTime when a new interval is dragged to
+                    if (numTopIntervals % minimumBlockSize === 0) {
+                        // If dragging the top handle upward AND in the area above a single interval
+                        // OR If dragging the top handle downward AND in the area above a single interval
+                        if ((prevIntervals > numTopIntervals && numTopIntervals < initialIntervals - 1)
+                            || (prevIntervals < numTopIntervals && initialIntervals > numTopIntervals)) {
+
+                            // Check if the resize will begin to overlap with another schedule, then show
+                            // a dialog to ask the user to confirm the merge.
+                            if (scope.blockType() === blockTypes.SCHEDULE &&
+                                    topIntervalsLimit.type === 'schedule' &&
+                                    numTopIntervals <= topIntervalsLimit.value - 2 &&
+                                    topIntervalsLimit.mergeTime) {
+                                isDialogOpen = true;
+                                verifyBlockMerge.launchMergeDialog(topIntervalsLimit.mergeTime, scope.block.EndDateTime)
+                                    .then(function () {
+                                        dayColumnCtrl.mergeWithPriorSchedule(scope.block);
+                                    })
+                                    .finally(function () {
+                                        isDialogOpen = false;
+                                    });
+                            }
+                            else if (numTopIntervals >= topIntervalsLimit.value) {
+                                scope.block.StartDateTime = moment(startMillis).format(timeFormat.TIME_FORMAT);
+                                scope.dayBlock.notifyBlockDirty(changeLevel.INPROGRESS);
+                                scope.$apply();
+                            }
+                        }
+                    }
+
+                    prevIntervals = numTopIntervals;
+
+                    // Scroll the page upward when in range of the screen top
+                    if (screenPageY < headersHeight) {
+                        $scrollContainer.scrollTop -= 10;
+                    }
+                }
+            }
+
+            function resizeBottom() {
+                if (isDialogOpen === false) {
+                    var delta = currentPageY - initialPageY;
+                    var numBottomIntervals = delta > 0 ? Math.floor(delta / dayColumnCtrl.intervalHeight) : Math.ceil(delta / dayColumnCtrl.intervalHeight);
+                    var endMillis = initialEndMillis + (numBottomIntervals * 15 * 60000);
+
+                    // Update EndDateTime when a new interval is dragged to
+                    if (numBottomIntervals % minimumBlockSize === 0) {
+                        // If dragging the bottom handle upward AND in the area below a single interval
+                        // OR If dragging the bottom handle downward AND in the area below a single interval
+                        if ((prevIntervals > numBottomIntervals && initialIntervals + numBottomIntervals > 0)
+                            || (prevIntervals < numBottomIntervals && initialIntervals + numBottomIntervals > 1)) {
+
+                            // Check if the resize will begin to overlap with another schedule, then show
+                            // a dialog to ask the user to confirm the merge.
+                            if (scope.blockType() === blockTypes.SCHEDULE &&
+                                    bottomIntervalsLimit.type === 'schedule' &&
+                                    numBottomIntervals >= bottomIntervalsLimit.value + 2 &&
+                                    bottomIntervalsLimit.mergeTime) {
+                                isDialogOpen = true;
+                                verifyBlockMerge.launchMergeDialog(scope.block.StartDateTime, bottomIntervalsLimit.mergeTime)
+                                    .then(function () {
+                                        dayColumnCtrl.mergeWithNextSchedule(scope.block);
+                                    })
+                                    .finally(function () {
+                                        isDialogOpen = false;
+                                    });
+                            }
+                            else if (numBottomIntervals <= bottomIntervalsLimit.value) {
+                                scope.block.EndDateTime = moment(endMillis).format(timeFormat.TIME_FORMAT);
+                                scope.dayBlock.notifyBlockDirty(changeLevel.INPROGRESS);
+                                scope.$apply();
+                            }
+                        }
+                    }
+
+                    prevIntervals = numBottomIntervals;
+
+                    // Scroll the page downward when in range of the screen bottom
+                    if (screenPageY > $window.innerHeight - footersHeight) {
+                        $scrollContainer.scrollTop += 10;
+                        //$scrollContainer.animate({ scrollTop: $scrollContainer.scrollTop + 10 }, 'slow');
+                    }
+                }
+            }
+
+            // Logic to set an upper and lower resize limit for this block.
+            // For now, it will be the midnight extremes.  In future, it could be limited to schedulable hours,
+            // or by running into an adjacent appointment (so that you can't have overlapping appointments), 
+            // only during availability hours, etc.
+            var setResizeLimits = function () {
+                var intervalsLimits = dayColumnCtrl.getIntervalsLimits(scope.blockType(), scope.block);
+                topIntervalsLimit = intervalsLimits[0];
+                bottomIntervalsLimit = intervalsLimits[1];
+
+                // Set offsets for the case when moving an entire block so that wherever the initial mousedown
+                // occurs, it will be the top and bottom of the associated block that affects whether
+                // scrolling is necessary.
+                var mouseDownIntervalIndex = Math.floor((screenPageY - headersHeight + $scrollContainer.scrollTop) / dayColumnCtrl.intervalHeight);
+                topIntervalsLimitOffset = mouseDownIntervalIndex - initialStartIndex;
+                bottomIntervalsLimitOffset = initialEndIndex - mouseDownIntervalIndex;
+                topOffsetForMoveEntire = topIntervalsLimitOffset * dayColumnCtrl.intervalHeight;
+                bottomOffsetForMoveEntire = bottomIntervalsLimitOffset * dayColumnCtrl.intervalHeight;
+            };
+
+            function getMoveHandlerForDownEvent($event) {
+                var $target = $($event.currentTarget),
+                    handler;
+                if ($target.hasClass('move-entire')) {
+                    if (scope.blockType() === blockTypes.APPOINTMENT) {
+                        handler = moveEntireAppointment;
+                    }
+                    // For an availability block that is not editable, but has permission to create a child schedule, the move-entire handler is used for click/drag to create 
+                    else if (scope.blockType() === blockTypes.AVAILABILITY && scope.dayBlock.blockRules.canCreateChild && !scope.dayBlock.blockRules.canEdit) {
+                        handler = clickAndDragToCreate;
+                    }
+                    else {
+                        handler = moveEntire;
+                    }
+                } else if($target.hasClass('resize north')) {
+                    handler = resizeTop;
+                } else if($target.hasClass('resize south')) {
+                    handler = resizeBottom;
+                }
+                return handler;
+            }
+
+            // setup mouse handlers
+            function onMouseDown($event) {
+                // Reset resize trackers so that it becomes known when a new interval has been dragged to
+                prevIntervals = 0;
+                initialPageY = $event.pageY + $scrollContainer.scrollTop;
+                initialStartMillis = moment(scope.block.StartDateTime).valueOf();
+                initialEndMillis = moment(scope.block.EndDateTime).valueOf();
+                initialStartIndex = dayColumnCtrl.getTimeSlotIndex(initialStartMillis);
+                initialEndIndex = dayColumnCtrl.getTimeSlotIndex(initialEndMillis);
+                initialIntervals = (moment(scope.block.EndDateTime).valueOf() - moment(scope.block.StartDateTime).valueOf()) / (60000 * 15);
+                screenPageY = $event.pageY;
+                currentPageY = screenPageY + $scrollContainer.scrollTop;
+                screenPageX = $event.pageX;
+                currentPageX = screenPageX + $scrollContainer.scrollLeft;
+                dragImage = null;
+                scope.isBlockDragging = false;
+                scope.isDraggingToCreate = false;
+                scheduleCreatedByDragging = undefined;
+
+                // Determine if there is enough space above the top of this block to display the popover.
+                // If not, change placement to the bottom.
+                scope.popoverPlacement = (initialStartIndex * dayColumnCtrl.intervalHeight - $scrollContainer.scrollTop < 105) ? 'bottom-left' : 'top-left';
+
+                dayColumnCtrl.updateCalendarSizes();
+
+                initialMatrixInterval = dayColumnCtrl.getMatrixIndexes(currentPageX, currentPageY);
+                // Keep track of the time slot of the mousedown for use when creating a new block
+                scope.mousedownTimeSlot = dayColumnCtrl.timeSlots[initialMatrixInterval.intervalIndex];
+                prevMatrixInterval = initialMatrixInterval;
+
+                isMoveEntire = _.indexOf($event.currentTarget.classList, "move-entire") > -1;
+                if (scope.blockType() === blockTypes.APPOINTMENT && isMoveEntire) {
+                    appointmentMoveMatrix = dayColumnCtrl.getAppointmentMoveMatrix(scope.block, initialMatrixInterval.intervalIndex);
+                }
+                else {
+                    setResizeLimits();
+                }
+
+               
+                ////logic to check for selected Date.
+                //if (scope.blockType() === blockTypes.AVAILABILITY_RANGE || scope.blockType() === blockTypes.AVAILABILITY) {
+                //    if (validateDate()) {
+                //        //if above 'availableOpenUntilDate', then display availabilityPopover 
+                //        if (validateAvailabilityUntilDate()) {
+                //            scope.dayBlock.launchAvailabilityDateChecker();
+                //        } else {
+                //            mouseMoveHandler = getMoveHandlerForDownEvent($event);
+                //            //$document.on(browserEvents.MOUSE_MOVE, onMouseMove);
+                //            //$document.on(browserEvents.MOUSE_UP, onMouseUp);
+                //        }
+                //    } 
+                //} else {
+                //    mouseMoveHandler = getMoveHandlerForDownEvent($event);
+                //    //$document.on(browserEvents.MOUSE_MOVE, onMouseMove);
+                //    //$document.on(browserEvents.MOUSE_UP, onMouseUp);
+                //}
+                mouseMoveHandler = getMoveHandlerForDownEvent($event);
+                $document.on(browserEvents.MOUSE_MOVE, onMouseMove);
+                $document.on(browserEvents.MOUSE_UP, onMouseUp);
+
+                scope.isValidDrop = true;
+                if (scope.dayBlock.blockRules.canEdit) {
+                scope.dayBlock.notifyBlockDirty(changeLevel.BEGIN);
+                }
+                scope.setSelectedBlock();
+                scope.$apply();
+
+                // stop propagation/prevent default
+                return false;
+            }
+
+            //check selected date with currentDate
+            //function validateDate() {
+           
+                /*Ex: 08/06/2016*/
+            //    var currentDate = moment(new Date()).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    /*Ex: 08/06/2016*/
+            //    var selectedDate = "";
+            //    if (scope.block.Date) {
+            //        selectedDate = moment(scope.block.Date).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    } else if (scope.block.StartDateTime) {
+            //        selectedDate = moment(scope.block.StartDateTime).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    }
+            //    return new Date(selectedDate).getTime() >= new Date(currentDate).getTime();
+            //}
+
+            ////check selectedDate with AvailabilityOpenUntilDate
+            //function validateAvailabilityUntilDate() {
+            //    /*Ex: 08/06/2016*/
+            //    var availabilityUnitilDate = moment(peakNonPeakProvider.dates.AvailabilityOpenUntil).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    /*Ex: 08/06/2016*/
+            //    var selectedDate = "";
+            //    if (scope.block.Date) {
+            //        selectedDate = moment(scope.block.Date).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    } else if (scope.block.StartDateTime) {
+            //        selectedDate = moment(scope.block.StartDateTime).format(timeFormat.MONTH_DAY_YEAR_FORMAT);
+            //    }
+            //    return new Date(selectedDate).getTime() >= new Date(availabilityUnitilDate).getTime();
+            //}
+
+            function onMouseMove($event) {
+                screenPageY = $event.pageY;
+                currentPageY = screenPageY + $scrollContainer.scrollTop;
+                screenPageX = $event.pageX;
+                currentPageX = screenPageX + $scrollContainer.scrollLeft;
+                console.log("wwww");
+                //availabilityPopoverService.avilablityDateCheck(scope, true);
+                //if (avilablityDateCheck(true)) {
+                if (availabilityPopoverService.avilablityDateCheck(scope, true)) {
+                    mouseMoveHandler();
+                }
+                return false;
+            }
+
+            function moveBlock() {
+                dayColumnCtrl.moveAppointment(scope.block, matrixInterval);
+            }
+
+
+           /* function avilablityDateCheck(isMousemove) {
+                var isValid = false;
+                //logic to check for selected Date.
+                if (scope.blockType() === blockTypes.AVAILABILITY_RANGE || scope.blockType() === blockTypes.AVAILABILITY) {
+                    if (validateDate()) {
+                        //if above 'availableOpenUntilDate', then display availabilityPopover 
+                        if (validateAvailabilityUntilDate()) {
+                            if (!isMousemove) {
+                                scope.dayBlock.launchAvailabilityDateChecker();
+                            }
+                        } else {
+                            isValid = true;
+                        }
+                    }
+                } else {
+                    isValid = true;
+                }
+                return isValid;
+            }*/
+
+            function onMouseUp($event) {
+                console.log("--------->>>>>>>>>>>>>>>>>>>>>>>>>");
+                console.log($event.button);
+                //availabilityPopoverService.avilablityDateCheck(scope);
+            
+                // Ensure it is a left-click mouseup
+                //if ($event.button === 0) {
+                //if($event.button === 0 && avilablityDateCheck()){
+                if($event.button === 0 && availabilityPopoverService.avilablityDateCheck(scope)){
+                    if (scope.blockType() === blockTypes.APPOINTMENT && scope.isBlockDragging) {
+                        // If the appointment has been dragged somewhere other than the original location, 
+                        // and it is a valid drop target, then update the data 
+                        if ((initialMatrixInterval.colIndex !== matrixInterval.colIndex ||
+                            initialIntervals.intervalIndex !== matrixInterval.intervalIndex) &&
+                            scope.isValidDrop) {
+
+                            if (scope.hasWarning) {
+                                isDialogOpen = true;
+                                var modalInstance = $uibModal.open({
+                                    animation: true,
+                                    templateUrl: '/App/dayCalendar/templates/confirmAppointmentMove.html',
+                                    controller: 'confirmAppointmentMoveCtrl',
+                                    size: 'sm',
+                                    resolve: {
+                                        proposedDrop: function () {
+                                            return {
+                                                start: scope.proposedMoveStartTime,
+                                                end: scope.proposedMoveEndTime
+                                            };
+                                        }
+                                    }
+                                });
+
+                                modalInstance.result
+                                    .then(function () {
+                                        moveBlock();
+                                    })
+                                    .finally(function () {
+                                        isDialogOpen = false;
+                                    });
+
+                            }
+                            else {
+                                scope.$apply(moveBlock());
+                            }
+                        }
+
+                        scope.$apply(scope.dragDisplay = 'none');
+                    }
+                    // Consider this a single-click since no drag has occurred to a different interval
+                    else if (isMoveEntire && scope.blockType() === blockTypes.SCHEDULE && scope.isBlockDragging === false) {
+                        // If 'update', then open the edit schedule dialog
+                        if (scope.dayBlock.blockRules.canEdit && scope.dayBlock.blockRules.canLaunchModal) {
+                            scope.dayBlock.launchScheduleEditModal();
+                        }
+                        // If can create child, then open the create appointment dialog
+                        else if (scope.dayBlock.blockRules.canCreateChild && scope.dayBlock.blockRules.canLaunchModal) {
+
+                            // DEPRECATED:  for now, in favor of the appointment creation flow.
+                            //scope.dayBlock.launchAppointmentCreateModal({
+                            //    isCreate: true,
+                            //    StartDateTime: moment(scope.mousedownTimeSlot).format(timeFormat.TIME_FORMAT),
+                            //    EndDateTime: moment(scope.mousedownTimeSlot).add(1, 'h').format(timeFormat.TIME_FORMAT),
+                            //});
+
+                            scope.dayBlock.launchAppointmentCreateFlow();
+                        }
+                    }
+                    // Consider this a single-click since no drag has occurred to a different interval
+                    else if (isMoveEntire && scope.blockType() === blockTypes.AVAILABILITY && !scope.isBlockDragging && !scope.isDraggingToCreate && !isDialogOpen) {
+                        
+                        if (!(scope.dayBlock.isAvailabilityDisable)) {
+                        // If 'update', then open the edit availability dialog
+                        if (scope.dayBlock.blockRules.canEdit && scope.dayBlock.blockRules.canLaunchModal) {
+                            scope.dayBlock.launchAvailabilityEditModal();
+                        }
+                        // If can create child
+                        else if (scope.dayBlock.blockRules.canCreateChild) {
+                            if (scope.dayBlock.blockRules.canLaunchModal) {
+                                // modal is supported, use it
+                                scope.dayBlock.launchScheduleCreateModal({
+                                    isCreate: true,
+                                    StartDateTime: moment(scope.mousedownTimeSlot).format(timeFormat.TIME_FORMAT),
+                                    EndDateTime: moment(scope.mousedownTimeSlot).add(1, 'h').format(timeFormat.TIME_FORMAT),
+                                    Employee_Role_Id: scope.employee().Employee.EmployeeRoles[0].Employee_Role_Id
+                                });                               
+                            } else {
+                                // else immediately create a default schedule (no modal)
+                                var mousedownTimeSlotMinutes = moment(scope.mousedownTimeSlot).minutes();
+                                // Mousedowns that are on or past the :15 or :45 should be rounded down to :00 or :30
+                                if (mousedownTimeSlotMinutes === 15 || mousedownTimeSlotMinutes === 45) {
+                                    scope.mousedownTimeSlot = moment(scope.mousedownTimeSlot).subtract(15, 'm');
+                                };
+
+                                // Selected role must not be ALL in order to create a schedule
+                                if (scope.selectedRole() > employeeRoles.ALL) {
+                                // Check if a valid schedule can be created
+                                var scheduleToCreate = dayColumnCtrl.canCreateSchedule(scope.block, scope.selectedRole(), scope.mousedownTimeSlot.valueOf());
+                                if (scheduleToCreate && !scope.isDraggingToCreate) {
+                                    // Attempt to save the schedule
+                                    //
+                                    // This call is wrapped with an $apply to ensure the changes are immediately reflected in the UI.
+                                    // The modal based operations have their own $apply flow.
+                                    scope.$apply(
+                                        scope.dayBlock.createSchedule({
+                                            isCreate: true,
+                                            StartDateTime: moment(scheduleToCreate.startMillis).format(timeFormat.TIME_FORMAT),
+                                            EndDateTime: moment(scheduleToCreate.endMillis).format(timeFormat.TIME_FORMAT),
+                                            Employee_Role_Id: scope.selectedRole()
+                                        })
+                                    );
+
+                                    scope.dayBlock.doesNotMatchSelectedRole = false;
+                                }
+                                    else if (!scheduleToCreate && !scope.isBlockDragging && !scope.isDialogOpen) {
+                                        scope.isDialogOpen = true;
+                                        var modalInstance = scope.dayBlock.launchMessageModal(validationMessages.MAX_SCHEDULES_PER_DAY);
+                                        modalInstance.result.then(function () {
+                                            scope.isDialogOpen = false;
+                                        });
+                            }                            
+                        }
+                                else if (!scope.isDialogOpen) {
+                                    scope.isDialogOpen = true;
+                                    var modalInstance = scope.dayBlock.launchMessageModal(validationMessages.MUST_SELECT_ROLE);
+                                    modalInstance.result.then(function () {
+                                        scope.isDialogOpen = false;
+                                    });
+                                }
+                           }                            
+                        }
+                            }
+                            else {
+                                var modalInstance = $uibModal.open({
+                                    animation: true,
+                                    templateUrl: '/App/dayCalendar/templates/availabilityLockedPopover.html',
+                                    controller: 'availabilityLockedPopoverCtrl',
+                                    size: 'sm',
+                                });
+                    }
+                        }
+                    // Single-click to create an availability
+                    else if (isMoveEntire &&
+                        scope.blockType() === blockTypes.AVAILABILITY_RANGE &&
+                        !scope.isBlockDragging &&
+                        !scope.isDraggingToCreate &&
+                        scope.dayBlock.blockRules.canCreateChild &&
+                        scope.dayBlock.blockRules.canLaunchModal) {
+                            if (!(scope.dayBlock.isAvailabilityDisable)) {
+                        var mousedownTimeSlotMinutes = moment(scope.mousedownTimeSlot).minutes();
+                        if (mousedownTimeSlotMinutes === 15 || mousedownTimeSlotMinutes === 45) {
+                            scope.mousedownTimeSlot = moment(scope.mousedownTimeSlot).subtract(15, 'm');
+                        };
+                       var aviailabilityForDay = dayColumnCtrl.checkAvailabilityForDay();
+                        if (aviailabilityForDay.isCreate){
+                            // If StartDateTime hour is 23:00 (11pm), then only add 30 mins for EndDateTime.  Otherwise, add an hour.
+                            scope.dayBlock.launchAvailabilityCreateModal({
+                            isCreate: true,
+                            StartDateTime: moment(scope.mousedownTimeSlot).format(timeFormat.TIME_FORMAT),
+                            EndDateTime: moment(scope.mousedownTimeSlot).add(moment(scope.mousedownTimeSlot).hour() === 23 ? 0.5 : 1, 'h').format(timeFormat.TIME_FORMAT)
+                        });
+                        }
+                        else {
+                            //Availability block already exists.
+                            var modalInstance = $uibModal.open({
+                                animation: true,
+                                templateUrl: '/App/dayCalendar/templates/availabilityDisabledPopover.html',
+                                controller: 'availabilityLockedPopoverCtrl',
+                                size: 'sm',
+                            });
+                        }
+                    }
+                            else {
+                                var modalInstance = $uibModal.open({
+                                    animation: true,
+                                    templateUrl: '/App/dayCalendar/templates/availabilityLockedPopover.html',
+                                    controller: 'availabilityLockedPopoverCtrl',
+                                    size: 'sm',
+                                });
+                            }
+                        }
+                    // If click & drag to create a new block
+                    else if (isMoveEntire && scope.blockType() === blockTypes.AVAILABILITY && scope.isDraggingToCreate && !scope.isDialogOpen) {
+                        scope.isDraggingToCreate = false;
+                        // Attempt to save the schedule
+                        //
+                        // This call is wrapped with an $apply to ensure the changes are immediately reflected in the UI.
+                        scope.$apply(
+                            scope.dayBlock.createSchedule({
+                                isCreate: true,
+                                StartDateTime: moment(scheduleCreatedByDragging.startMillis).format(timeFormat.TIME_FORMAT),
+                                EndDateTime: moment(scheduleCreatedByDragging.endMillis).format(timeFormat.TIME_FORMAT),
+                                Employee_Role_Id: scope.selectedRole()
+                            })
+                        );
+
+                        scope.dayBlock.doesNotMatchSelectedRole = false;
+                    }
+                }
+
+                if (scope.dayBlock.blockRules.canEdit) {
+                scope.dayBlock.notifyBlockDirty(changeLevel.COMPLETE);
+                }
+                isMoveEntire = false;
+                scope.isBlockDragging = false;
+                scope.isDraggingToCreate = false;
+                mouseMoveHandler = undefined;
+
+                $document.off(browserEvents.MOUSE_MOVE, onMouseMove);
+                $document.off(browserEvents.MOUSE_UP, onMouseUp);
+                return false;
+            }
+
+            function registerHandles() {
+                // add resizing handles
+                $handleTop = element.find('.resize.north');
+                $handleTop.on(browserEvents.MOUSE_DOWN, onMouseDown);
+                $handleBottom = element.find('.resize.south');
+                $handleBottom.on(browserEvents.MOUSE_DOWN, onMouseDown);
+            }
+
+            function deregisterHandles() {
+                if ($handleTop) {
+                    $handleTop.off(browserEvents.MOUSE_DOWN, onMouseDown);
+                    $handleTop = undefined;
+                }
+
+                if ($handleBottom) {
+                    $handleBottom.off(browserEvents.MOUSE_DOWN, onMouseDown);
+                    $handleBottom = undefined;
+                }
+            }
+
+            function registerMoveEntire() {
+                $handleEntire = element.find('.move-entire');
+                $handleEntire.on(browserEvents.MOUSE_DOWN, onMouseDown);
+            }
+
+            function deregisterMoveEntire() {
+                if ($handleEntire) {
+                    $handleEntire.off(browserEvents.MOUSE_DOWN, onMouseDown);
+                    $handleEntire = undefined;
+                }
+            }
+
+            /**
+             * Setup a watch to monitor changes to the block rules.
+             */
+            scope.$watch(
+                function () {
+                    return scope.dayBlock.blockRules.canEdit;
+                },
+                function (value) {
+                    if (value) {
+                        registerHandles();
+                    } else {
+                        deregisterHandles();
+                    }
+                }
+            );
+
+            scope.$watch(
+                function () {
+                    return scope.dayBlock.blockRules.canEdit || scope.dayBlock.blockRules.canCreateChild;
+                },
+                function (value) {
+                    if (value) {
+                        registerMoveEntire();
+                    } else {
+                        deregisterMoveEntire();
+                    }
+                }
+            );
+
+            /**
+             * Setup a watch to monitor changes to the block and adjust the position accordingly.
+             */
+            scope.$watchCollection(
+                function () {
+                    return scope.block;
+                },
+                function (value) {
+                    if (value) {
+                        updateBlockPosition();
+                    }
+                }
+            );
+
+            /**
+             * Cleanup any resources when the block is destroyed.
+             */
+            element.on('$destroy', function () {
+                // remove all possible element listeners
+                deregisterHandles();
+                deregisterMoveEntire();
+
+                // remove all possible document listeners
+                $document.off(browserEvents.MOUSE_MOVE, onMouseMove);
+                $document.off(browserEvents.MOUSE_UP, onMouseUp);
+            });
+        }
+    };
+}]);

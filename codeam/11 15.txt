@@ -1,0 +1,252 @@
+'use strict';
+
+/**
+ * Recipe for a provider that builds block gesture detectors.
+ * @name dayCalendar.services.calendarBlockGestureDetector
+ * @propertyOf dayCalendar.services
+ * @see https://docs.angularjs.org/guide/providers
+ */
+app.service('calendarBlockGestureDetector', ['$document', 'browserEvents', 'blockTypes', 'calendarBlockGestureState', 'calendarBlockResize', 'calendarBlockDragMove', 'calendarBlockDragCreate', 'calendarBlockClick',
+    function calendarBlockGestureDetectorFactory($document, browserEvents, blockTypes, calendarBlockGestureState, calendarBlockResize, calendarBlockDragMove, calendarBlockDragCreate, calendarBlockClick) {
+
+    var self = this;
+
+    /**
+    * Get an instance of a block event processor.
+    * @name dayCalendar.services.calendarBlockGestureDetector#getInstance
+    * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+    */
+    self.getInstance = function ($scope, $scrollContainer,listener) {
+
+        var detector = {},
+            mouseMoveHandler;
+
+        /**
+        * Private instance vars.
+        * @name dayCalendar.services.calendarBlockGestureDetector#$private
+        * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+        */
+        detector.$private = {
+            $scope: $scope,
+            $scrollContainer: $scrollContainer,
+            listener: listener
+        };
+
+        /**
+        * Gesture state tracking object.
+        * @name dayCalendar.services.calendarBlockGestureDetector#gesture
+        * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+        */
+        detector.state = calendarBlockGestureState.getInstance();
+
+        /**
+        * Resize state tracking object.
+        * @name dayCalendar.services.calendarBlockGestureDetector#resize
+        * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+        */
+        detector.resize = calendarBlockResize.getInstance();
+
+        /**
+        * Drag image tracking object.
+        * @name dayCalendar.services.calendarBlockGestureDetector#dragMove
+        * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+        */
+        detector.dragMove = calendarBlockDragMove.getInstance();
+
+        /**
+        * Drag create tracking object.
+        * @name dayCalendar.services.calendarBlockGestureDetector#dragCreate
+        * @propertyOf dayCalendar.services.calendarBlockGestureDetector
+        */
+        detector.dragCreate = calendarBlockDragCreate.getInstance();
+
+        /**
+         * Destroy resources held by the detector.
+         * @name dayCalendar.services.calendarBlockGestureDetector#destroy
+         * @methodOf dayCalendar.services.calendarBlockGestureDetector
+         * @function
+         */
+        detector.destroy = function () {
+            
+            // clear state
+            detector.$private = undefined;
+
+            // remove all possible document listeners
+            $document.off(browserEvents.MOUSE_MOVE, detector.onMouseMove);
+            $document.off(browserEvents.MOUSE_UP, detector.onMouseUp);
+        };
+
+        /**
+         * Mouse down handler.
+         * @name dayCalendar.services.calendarBlockGestureDetector#onMouseDown
+         * @methodOf dayCalendar.services.calendarBlockGestureDetector
+         * @function
+         */
+        detector.onMouseDown = function ($event) {
+           
+            // update state objects
+            detector.state.begin($event, detector.$private.$scrollContainer, detector.$private.listener);
+            detector.dragCreate.begin(detector.$private.listener);
+            detector.dragMove.begin(detector.$private.listener);
+            detector.resize.begin(detector.$private.$scrollContainer, detector.$private.listener);
+
+            // resolve move handler
+            mouseMoveHandler = getMoveHandlerForDownEvent($event);
+
+            // register document mouse event listeners
+            $document.on(browserEvents.MOUSE_MOVE, detector.onMouseMove);
+            $document.on(browserEvents.MOUSE_UP, detector.onMouseUp);
+
+            // set the block as selected
+            listener.setSelectedBlock();
+
+            // apply changes to the scope
+            $scope.$apply();
+
+            // stop propagation/prevent default
+            return false;
+        };
+
+        /**
+         * Mouse move handler.
+         * @name dayCalendar.services.calendarBlockGestureDetector#onMouseMove
+         * @methodOf dayCalendar.services.calendarBlockGestureDetector
+         * @function
+         */
+        detector.onMouseMove = function ($event) {
+            // update state tracking
+            detector.state.update($event, $scrollContainer);
+            console.log("YUEs------>>>>>");
+            console.log(listener.isScheduleOtherOffice());
+            console.log(listener.doesNotMatchSelectedRole());
+            console.log(listener.isScheduleDisable());
+            // run the custom handler
+            if (!listener.isScheduleOtherOffice() && !listener.doesNotMatchSelectedRole() && !listener.isScheduleDisable()) {
+                mouseMoveHandler($scope, detector.$private.$scrollContainer, detector.$private.listener);
+            }
+
+            // stop propagation/prevent default
+            return false;
+        };
+
+        /**
+         * Mouse up handler.
+         * @name dayCalendar.services.calendarBlockGestureDetector#onMouseUp
+         * @methodOf dayCalendar.services.calendarBlockGestureDetector
+         * @function
+         */
+        detector.onMouseUp = function ($event) {
+
+            // Ensure it is a left-click mouseup
+            if ($event.button === 0) {
+
+                // handle the gesture detection here based on block type
+                switch (listener.blockType()) {
+                    case blockTypes.APPOINTMENT:
+                        onMouseUpAppointment($event);
+                        break;
+                    case blockTypes.SCHEDULE:
+                        onMouseUpSchedule($event);
+                        break;
+                    case blockTypes.AVAILABILITY:
+                        onMouseUpAvailability($event);
+                        break;
+                    case blockTypes.AVAILABILITY_RANGE:
+                        onMouseUpAvailabilityRange($event);
+                        break;
+                }                
+            }
+
+            // update state.  it is possible here that the event handling caused the block to be destroyed and the 
+            // detectors external references will be null.
+            if (detector.$private) {
+                detector.state.end($event, detector.$private.$scrollContainer, detector.$private.listener);
+                detector.dragCreate.end(detector.$private.$scrollContainer, detector.$private.listener);
+                detector.dragMove.end(detector.$private.$scrollContainer, detector.$private.listener);
+                detector.resize.end(detector.$private.$scrollContainer, detector.$private.listener);
+            }
+
+            // clear the move handler
+            mouseMoveHandler = undefined;
+
+            // remove document event listeners
+            $document.off(browserEvents.MOUSE_MOVE, detector.onMouseMove);
+            $document.off(browserEvents.MOUSE_UP, detector.onMouseUp);
+
+            // stop propagation/prevent default
+            return false;
+        };
+
+        function onMouseUpAppointment($event) {
+            if (detector.state.isBlockDragging) {
+                detector.dragMove.dragAppointment($scope, detector, listener);
+            } else if (detector.state.isMoveEntire) {
+                calendarBlockClick.singleClickAppointment($event, $scope, detector, listener);
+            }
+        }
+
+        function onMouseUpSchedule($event) {
+            if (detector.state.isMoveEntire && !detector.state.isBlockDragging) {
+                calendarBlockClick.singleClickSchedule($event, $scope, detector, listener);
+            }
+        }
+
+        function onMouseUpAvailability($event) {
+            if (detector.state.isMoveEntire && !detector.state.isDialogOpen) {
+                if (!detector.state.isBlockDragging && !detector.dragCreate.isDraggingToCreate) {
+                    calendarBlockClick.singleClickAvailability($event, $scope, detector, listener);
+                } else if (detector.dragCreate.isDraggingToCreate) {
+                    detector.dragCreate.clickDragComplete($scope, detector, listener);
+                }
+            }            
+        }
+
+        function onMouseUpAvailabilityRange($event) {
+            if (detector.state.isMoveEntire && !detector.state.isDialogOpen && listener.blockRules().canCreateChild) {
+                if (!detector.state.isBlockDragging && !detector.dragCreate.isDraggingToCreate) {
+                    calendarBlockClick.singleClickAvailabilityRange($event, $scope, detector, listener);
+                } else if (detector.dragCreate.isDraggingToCreate) {
+                    detector.dragCreate.clickDragComplete($scope, detector, listener);
+                }
+            }
+        }
+
+        function getMoveHandlerForDownEvent($event) {
+
+            var $target = $($event.currentTarget),
+                handler;
+
+            if ($target.hasClass('move-entire')) {
+                if (listener.blockType() === blockTypes.APPOINTMENT) {
+                    handler = detector.dragMove.moveEntireAppointment;
+                }
+                // For an availability or availability range block that is not editable, but has permission to create a
+                // child block, the move-entire handler is used for click/drag to create 
+                else if ((listener.blockType() === blockTypes.AVAILABILITY || listener.blockType() === blockTypes.AVAILABILITY_RANGE) &&
+                        listener.blockRules().canCreateChild && !listener.blockRules().canEdit) {
+                    handler = detector.dragCreate.clickAndDragToCreate;
+                }
+                else {
+                    handler = detector.resize.moveEntire;
+                }
+            } else if ($target.hasClass('resize north')) {
+                if (listener.blockType() === blockTypes.APPOINTMENT) {
+                    handler = detector.dragMove.resizeTopAppointment;
+                } else {
+                    handler = detector.resize.resizeTop;
+                }
+            } else if ($target.hasClass('resize south')) {
+                if (listener.blockType() === blockTypes.APPOINTMENT) {
+                    handler = detector.dragMove.resizeBottomAppointment;
+                } else {
+                    handler = detector.resize.resizeBottom;
+                }
+            }
+
+            return handler;
+        }        
+
+        return detector;
+    };
+
+}]);

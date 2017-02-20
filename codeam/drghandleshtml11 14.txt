@@ -1,0 +1,70 @@
+<div>
+    <!-- The following div appears when a clickable-read-only block is being dragged upon in order to create a child block -->
+    <div class="drag-to-create-block"
+         layout="column"
+         flex
+         ng-if="dayBlockDragHandles.detector.dragCreate.isDraggingToCreate &&
+                dayBlockDragHandles.blockRules().canCreateChild &&
+                !dayBlockDragHandles.blockRules().canEdit"
+         ng-style="{'top' : dayBlockDragHandles.detector.dragCreate.topOfDragToCreateBlock, 'height' : dayBlockDragHandles.detector.dragCreate.heightOfDragToCreateBlock }"
+         ng-class="{'csp': dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.CSP,
+                    'csl': dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.CSL,
+                    'tax-pro' : dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.TAX_PRO,
+                    'availability' :  dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.AVAILABILITY_RANGE}">
+        <div class="label-top-line"
+             ng-show="dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.AVAILABILITY &&
+                        !dayBlockDragHandles.detector.dragCreate.isDragToCreateMinimumSize">
+            <span ng-if="dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.CSP">CSP</span>
+            <span ng-if="dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.TAX_PRO">TP</span>
+            <span ng-if="dayBlockDragHandles.selectedRole() === dayBlockDragHandles.employeeRoles.CSL">CSL</span>
+        </div>
+        <span class="label-second-line">{{dayBlockDragHandles.detector.dragCreate.proposedDragToCreateStart}} - {{dayBlockDragHandles.detector.dragCreate.proposedDragToCreateEnd}}</span>
+        <div class="resize south">
+            <div>
+                <md-icon md-font-library="material-icons" class="drag-handle" aria-hidden="false">drag_handle</md-icon>
+            </div>
+        </div>
+    </div>
+    <!-- drag image -->
+    <div ng-if="dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.APPOINTMENT && dayBlockDragHandles.detector.state.isBlockDragging"
+         class="drag-image"
+         layout="column"
+         ng-class="{'valid-drop-with-warning' : dayBlockDragHandles.detector.dragMove.hasWarning.type, 'invalid-drop' : !dayBlockDragHandles.detector.dragMove.isValidDrop }"
+         ng-style="{'top' : dayBlockDragHandles.detector.dragMove.dragTopPosition,
+                    'left' : dayBlockDragHandles.detector.dragMove.dragLeftPosition,
+                    'width': dayBlockDragHandles.detector.dragMove.dragWidth,
+                    'height': dayBlockDragHandles.detector.dragMove.dragHeight,
+                    'display' : dayBlockDragHandles.detector.dragMove.dragDisplay }">
+        <day-block-appointment-data ng-show="dayBlockDragHandles.detector.dragMove.isValidDrop && !dayBlockDragHandles.detector.dragMove.isResize"
+                                    block="dayBlockDragHandles.block">
+        </day-block-appointment-data>
+    </div>
+    <!-- the 'move-entire' handle covers the entire block, but is invisible -->
+    <div ng-if="(dayBlockDragHandles.blockRules().canEdit || dayBlockDragHandles.blockRules().canCreateChild)"
+         class="move-entire">
+    </div>
+    <!-- top handle -->
+    <div ng-if="dayBlockDragHandles.blockRules().canEdit &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.AVAILABILITY && dayBlockDragHandles.isAvailabilityDisable()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.isScheduleDisable()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.doesNotMatchSelectedRole()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.isScheduleOtherOffice()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.APPOINTMENT && dayBlockDragHandles.needsAttention())"
+         class="resize north"
+         layout="row"
+         layout-align="center center">
+        <i class="material-icons drag-handle">drag_handle</i>
+    </div>
+    <!-- bottom handle -->
+    <div ng-if="dayBlockDragHandles.blockRules().canEdit &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.AVAILABILITY && dayBlockDragHandles.isAvailabilityDisable()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.isScheduleDisable()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.doesNotMatchSelectedRole()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.SCHEDULE && dayBlockDragHandles.isScheduleOtherOffice()) &&
+                !(dayBlockDragHandles.blockType() === dayBlockDragHandles.blockTypes.APPOINTMENT && dayBlockDragHandles.needsAttention())"
+         class="resize south"
+         layout="row"
+         layout-align="center center">
+        <i class="material-icons drag-handle">drag_handle</i>
+    </div>
+</div>

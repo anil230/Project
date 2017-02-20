@@ -1,0 +1,235 @@
+'use strict';
+
+/**
+ * Backing controller for the welcome view.
+ * @class welcome.controllers.welcomeCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('welcomeCtrl', ['$scope', '$rootScope', '$window', '$uibModal', 'toaster', 'modalProperties', 'availabilityProvider', 'availabilityDateRangeProvider', 'calendarEvents', 'rangeTypes', 'navigationItemViews', 'visibilityProvider',
+    function ($scope, $rootScope, $window, $uibModal, toaster, modalProperties, availabilityProvider, availabilityDateRangeProvider, calendarEvents, rangeTypes, navigationItemViews, visibilityProvider) {
+        
+        var self = this,
+            activeModal;
+
+        // hide the navigation
+        visibilityProvider.isNavigationVisible = false;
+
+        /**
+        * Logged in user model.
+        * @name welcome.controllers.welcomeCtrl#loggedInUser
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.loggedInUser = $window.LoggedInUser;
+        console.log(self.loggedInUser);
+      
+
+
+        /**
+        * A flag to determine if the Peak date is true or false.
+        * @name welcome.controllers.welcomeCtrl#isPeak
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.isPeak = self.loggedInUser.IsPeakDateSet;
+
+        /**
+        * A flag to determine if the Non Peak date is true or false.
+        * @name welcome.controllers.welcomeCtrl#isNonPeak
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.isNonPeak = self.loggedInUser.IsNonPeakDatesSet;    
+
+        /**
+        * A flag to determine if the welcome screen is true.
+        * @name welcome.controllers.welcomeCtrl#peakNonPeak
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.isWelcomeScreen = true;
+
+        /**
+        * Expose the properties of the rangeTypes constant for the view.
+        * @name welcome.controllers.welcomeCtrl#rangeTypes
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.rangeTypes = rangeTypes;
+
+        /**
+        * Expose the properties of the calendar provider on our scope for the view.
+        * @name welcome.controllers.welcomeCtrl#calendar
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.calendar = availabilityProvider.getInstance($scope);
+
+        // initialize the calendar data
+        self.calendar.initialize(false, true, true, false);
+        console.log(self.isPeak);
+        console.log(self.isNonPeak);
+        console.log(self.isWelcomeScreen);
+
+        /**
+        * A method to return edit modal by date range.
+        * @name welcome.controllers.welcomeCtrl#editDateRange
+        * @propertyOf welcome.controllers.welcomeCtrl
+        */
+        self.editDateRange = function (rangeType) {
+
+            var $modalScope = $rootScope.$new();
+            $modalScope.provider = getProviderCopy($modalScope);
+
+            activeModal = $uibModal.open({
+                animation: false,
+                backdrop: modalProperties.MODAL_BACKDROP,
+                templateUrl: '/App/calendarModal/templates/editRangeWrapper.html',
+                size: modalProperties.MODAL_SIZE_LARGE,
+                windowClass: modalProperties.MODAL_CALENDAR,
+                scope: $modalScope
+            });
+
+            // attach the provider for later reference
+            activeModal.provider = $modalScope.provider;
+
+            //pass true to edit range modal
+            activeModal.provider.isWelcomeScreen = true;
+
+            //pass range type to the provider to show peak or non peak
+            activeModal.provider.rangeType = rangeType;
+
+            // register events for the modal
+            $modalScope.$on(calendarEvents.MODAL_CLOSE, function (event) {
+
+                closeModalAndRefresh($modalScope);
+
+            });
+
+            /**
+            * Setup a watch to monitor for modal save requests.
+            */
+            $modalScope.$on(calendarEvents.MODAL_SAVE, function (event) {
+                        
+                var saveChangeswithDateRange = $modalScope.provider.saveChangesWithDataRange();
+                console.log("save action...");
+                console.log(saveChangeswithDateRange);
+                saveChangeswithDateRange.$promise.then(handleSaveChangeswithDateRangeSuccess, handleSaveChangeswithDateRangeFailure).finally(handleSaveChangeswithDateRangeFinally);           
+            });
+
+            /**
+            * Success handler function for the save changes date range
+            * @name welcome.controllers.welcomeCtrl#handleSaveChangeswithDateRangeSuccess
+            * @propertyOf welcome.controllers.welcomeCtrl
+            */
+            function handleSaveChangeswithDateRangeSuccess(response) {
+                console.log("===========");
+                console.log(response);
+                if (response.Response) {
+                    console.log("********************");
+                    toaster.toastSaveSuccess();
+                    closeModalAndRefresh($modalScope);
+                    //To update user info
+                    //updateUserInfo($modalScope);
+                   $window.location.href = navigationItemViews.INDEX.url;
+            
+                    }
+                };
+
+        
+                /**
+                * Failure handler function for the save changes date range
+                * @name welcome.controllers.welcomeCtrl#handleSaveChangeswithDateRangeFailure
+                * @propertyOf welcome.controllers.welcomeCtrl
+                */
+                function handleSaveChangeswithDateRangeFailure() {
+
+                };
+
+                /**
+                * Finally handler function for the save changes date range
+                * @name welcome.controllers.welcomeCtrl#handleSaveChangeswithDateRangeFinally
+                * @propertyOf welcome.controllers.welcomeCtrl
+                */
+                function handleSaveChangeswithDateRangeFinally() {
+
+                };
+
+                /**
+                * Setup a watch to monitor modal continue & refresh requests.
+                */
+                $modalScope.$on(calendarEvents.MODAL_CONTINUE_REFRESH, function (event) {
+                    modalRefresh();
+                });
+
+
+                //function updateUserInfo($modalScope) {
+                //   console.log($modalScope);
+                //    console.log($modalScope.provider.rangeType);
+                //    console.log(self.loggedInUser)
+
+                //    var saveParams = {};
+                //    if ($modalScope.provider.rangeType === rangeTypes.PEAK) {
+                //        self.loggedInUser.IsPeakDatesSet = true;
+                //        self.isPeak = true;
+                //    } else if ($modalScope.provider.rangeType === rangeTypes.NONPEAK) {
+                //        self.loggedInUser.IsNonPeakDatesSet = true;
+                //        self.isNonPeak = true;
+                //    }
+                //    saveParams.IsPeakDatesSet = self.loggedInUser.IsPeakDatesSet;
+                //    saveParams.IsNonPeakDatesSet = self.loggedInUser.IsNonPeakDatesSet;
+                //    if (self.loggedInUser.IsNonPeakDatesSet && self.loggedInUser.IsPeakDatesSet) {
+                //        saveParams.ShowWelcomeScreen = false;
+                //        $window.location.href = navigationItemViews.INDEX.url;
+                //    }
+                //    console.log(saveParams);
+                //    //Need write api to update user info
+                //};
+
+            };
+
+            /**
+            * Close an open modal and refresh the calendar data.
+            * @private
+            * @function
+            */
+            function closeModalAndRefresh($scope) {
+
+                // close the modal
+                activeModal.close();
+                activeModal = undefined;
+
+                // destroy the modals custom scope
+                $scope.$destroy();
+
+                // load fresh calendar data
+                self.calendar.refresh();
+
+            }
+
+            /**
+            * Refresh the calendar data in the modal.
+            * @private
+            * @function
+            */
+            function modalRefresh() {
+
+                if (activeModal) {
+                    // load fresh calendar data in the modal
+                    activeModal.provider.refresh();
+                }
+            }
+
+            /**
+            * A method to return edit modal by date range.
+            * @name welcome.controllers.welcomeCtrl#editDateRange
+            * @propertyOf welcome.controllers.welcomeCtrl
+            */
+            function getProviderCopy($scope) {
+                var instance = availabilityDateRangeProvider.getInstance($scope),
+                    currentData = self.calendar.getInitializedData();
+
+                instance.hideAvailabilities = true;
+                instance.initialize(false, true, false, true);
+
+                // set the data into the new provider instance
+                instance.setInitializedData(currentData);
+
+                return instance;
+            }
+
+        }]);

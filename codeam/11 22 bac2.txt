@@ -1,0 +1,88 @@
+'use strict';
+
+/**
+ * Backing controller for the associateFilterCtrl directive.  Handles data transformations and extrapolations to drive the view.
+ * @class calendarSettings.controllers.associateFilterCtrl
+ * @see https://docs.angularjs.org/guide/controller
+ */
+app.controller('associateFilterCtrl', ['$scope','employeeRoles', 'taxProRatings', 'calendarSettingsEvents',
+    function ($scope, employeeRoles, taxProRatings,calendarSettingsEvents) {
+
+        // private vars
+        var self = this,
+        userChangedSort = false;
+        self.employeeRoles = employeeRoles;
+
+        /**
+         * The available sort criteria for the employees.
+         * @name calendarSettings.controllers.associateSortCtrl#sortCriteria
+         * @propertyOf calendarSettings.controllers.associateSortCtrl
+         */
+        self.sortCriteria = [
+            {
+                label: 'All Associates',
+                value: employeeRoles.ALL,
+            },
+            {
+                label: 'Tax Pros',
+                value: employeeRoles.TAX_PRO,
+            },
+            {
+                label: 'CSPs',
+                value: employeeRoles.CSP,
+            },
+            {
+                label: 'CSLs',
+                value: employeeRoles.CSL,
+            }
+        ];
+
+
+        /**
+         * The active sort criteria for the employees.  
+         * Defaults to the first selection in the sort criteria collection.
+         * @name calendarSettings.controllers.associateSortCtrl#selectedSort
+         * @propertyOf calendarSettings.controllers.associateSortCtrl
+         */
+        self.selectedSort = self.sortCriteria[0];
+
+        /**
+         * Set a new selected sort value.
+         * @name calendarSettings.controllers.associateSortCtrl#setSelectedSort
+         * @propertyOf calendarSettings.controllers.associateSortCtrl
+         * @function
+         * @param {criteria} Object
+         */
+        self.setSelectedSort = function (criteria) {
+            // set an internal flag
+            userChangedSort = true;
+
+            // update the criteria
+            self.selectedSort = criteria;
+        };
+
+        /**
+         * Setup a watch to monitor changes to the selected sort criteria and adjust the sorting function accordingly.
+         */
+        $scope.$watch(
+            function () {
+                return self.selectedSort;
+            },
+            function (criteria) {
+                // set the display label
+                self.description = criteria.label;
+                self.sortFunction = criteria.value;
+                //TO-DO update roles to get selected filter 
+                self.roles = [criteria.value];
+
+                if (userChangedSort) {
+                    // reset the flag
+                    userChangedSort = false;
+
+                    // dispatch an event to let any parent panel know that this control can be closed
+                    $scope.$emit(calendarSettingsEvents.CLOSE_FLYOUT);
+                }
+            }
+        );
+      
+    }]);

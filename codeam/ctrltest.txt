@@ -1,0 +1,241 @@
+describe('appointmentDetailsModal/controllers/appointmentDetailsModalCtrl.js', function () {
+
+
+    var mockBaseUrl, mockAppointment, mockAppointmentHistory,mockClientInfo, controller, $scope, $httpBackend;
+
+    beforeEach(angular.mock.module('appointmentManager'));
+
+    beforeEach(inject(function ($controller, $rootScope, $injector) {
+
+        mockBaseUrl = 'api/';
+        mockUser = { "UserDetails": { SSO_ID: '1234' } };
+        mockUser = { "AppointmentDetails": { Appointment_Id: '55965' } };
+
+
+        mockAppointment = {
+            "StatusCode": 200,
+            "ErrorMessage": null,
+            "Response": [
+                {
+                    "Appointment": {
+                        "Appointment_Id": 55965,
+                        "Office_Id": 1011,
+                        "StartDateTime": "2017-06-14T10:00:00",
+                        "EndDateTime": "2017-06-14T10:30:00",
+                        "Appointment_Type_Id": 1,
+                        "Appointment_Type_Desc": "Appt",
+                        "Status_Id": 1,
+                        "Status_Desc": "Scheduled",
+                        "Product_Id": 1,
+                        "Product_Desc": "Tax Prep",
+                        "Match_Id": 1,
+                        "Match_Type_Desc": "TP Requested",
+                        "Originating_Sys_Id": 15,
+                        "Originating_System": "Ipad App",
+                        "Appt_Source_CD": "W",
+                        "Appt_Note_txt": null,
+                        "Appt_Notification_Pref_Cd": "E",
+                        "Last_Updt_Proc_Id": 848,
+                        "Last_Updt_Proc_Ts": "2016-06-14T09:29:18.587",
+                        "Last_Updt_User_Id": 192199,
+                        "Tp_Requested_Indicator": true,
+                        "W2_Indicator": false,
+                        "Start_Online_Indicator": false,
+                        "Follow_Up_Indicator": false,
+                        "Cre_Proc_Id": 848,
+                        "Cre_Proc_Ts": "2016-06-14T09:29:18.587",
+                        "Check_In_Ts": null,
+                        "Check_Out_Ts": null,
+                        "ConflictTypes": null,
+                        "Conflict_Indicator": false,
+                        "Check_Out_Reason_Id": null,
+                        "Last_Updt_User_Nm": "Ipad  User",
+                        "ClientInfo": {
+                            "Client_Id": 2046430,
+                            "First_NM": "sgfsd",
+                            "Middle_NM": null,
+                            "Last_NM": "sgfsdg",
+                            "Phone_No": "2352228956",
+                            "Email_Txt": null,
+                            "Last4SSN": "1212",
+                            "Client_Rating": null,
+                            "Client_Tenure_Desc": null,
+                            "Birth_Dt": null,
+                            "Gi_Id": null,
+                            "Client_Latino_Lang_Cd": 0,
+                            "TaxdataInfo": null,
+                            "Last_Updt_Proc_Ts": null,
+                            "Last_Updt_User_Id": 0,
+                            "Cre_Proc_Id": 0,
+                            "Cre_Proc_Ts": null
+                        },
+                        "ClientFirstName": null,
+                        "ClientLastName": null
+                    },
+                    "Employee": {
+                        "Employee_Id": 130,
+                        "First_NM": "Roh",
+                        "Middle_NM": "M",
+                        "Last_NM": "Matthews",
+                        "Preferred_NM": "Rohit",
+                        "Phone1_No": "8168541000",
+                        "Employee_Service_Level_No": 2,
+                        "Email_Txt": "rmathews@hrblock.com",
+                        "SSN5_Id": null,
+                        "TP_Rating": 5,
+                        "PSFT_ID": "PSID130",
+                        "Client_Retention_Level_Nbr": 0.61,
+                        "Client_Retention_Group": null,
+                        "Employee_Tenure_nbr": null,
+                        "TRS_Servicetype_Ind": false,
+                        "EmployeeRoles": [],
+                        "CertificationId": null,
+                        "Employee_Mix_Value": 0,
+                        "Shift_Desc": "",
+                        "TP_Bilingual": false,
+                        "Employee_Seasonality_Desc": "T"
+                    },
+                    "Office": {
+                        "Office_Id": 1011,
+                        "Address_Line_1_Txt": "TALLADEGA PLAZA",
+                        "Address_Line_2_Txt": "107 STEPHEN WHITE MEMR BLVD",
+                        "City": "TALLADEGA",
+                        "Ownership_Id": 1,
+                        "Active_Ind": true,
+                        "State": "AL",
+                        "Zip_Code": "35160",
+                        "District_Id": 0,
+                        "Region_Id": 0,
+                        "Division_Id": 0
+                    }, "Action": {
+                        "IsScheduled": true,
+                        "IsConfirmed": true,
+                        "IsCheckedIn": true,
+                        "IsBeginService": true,
+                        "IsWalkOut": true,
+                        "IsNoShow": true,
+                        "IsCancel": true,
+                        "IsPersonal": true,
+                        "IsSaveClose": true,
+                        "IsReschedule": true
+                    }
+                
+            }]
+        };
+
+        mockAppointmentHistory = {
+            "StatusCode": 200,
+            "ErrorMessage": null,
+            "Response": [
+                {
+                    "Appointment_Id": 18421374,
+                    "Office_Id": 1008,
+                    "Status_Id": 7,
+                    "Status_Desc": "Cancelled",
+                    "Last_Updt_TS": "2015-03-26T01:21:19.71",
+                    "Last_Updt_User_NM": "TaxPro Finder",
+                    "Last_Updt_Process_Desc": "TPF CancelAppointment",
+                    "TaxPro_Name": "Louis",
+                    "Appointment_Start_Time": "2016-08-22T13:46:07.1592508-05:00",
+                    "Appointment_End_Time": "2016-08-22T14:46:07.1592508-05:00"
+                }]
+        };
+
+        mockClientInfo = {
+            "StatusCode": 200,
+            "ErrorMessage": null,
+            "Response": [
+            {
+
+                "Client_Id": 24,
+                "Address": "sample string 1",
+                "Enterprise_Id": "sample string 2",
+                "Mdm_Score_Nm": 3.0,
+                "OfficeDistance": 4,
+                "HomePhone": "sample string 5",
+                "MobilePhone": "9253144212",
+                "BusinessPhone": "9253144213",
+                "BusinessPhoneExt": "235",
+                "HomeAddressLine1": "sample string 9",
+                "HomeAddressLine2": "sample string 10",
+                "HomeAddressLine3": "sample string 11",
+                "HomeAddressCity": "sample string 12",
+                "HomeAddressState": "sample string 13",
+                "HomeAddressCountry": "sample string 14",
+                "HomeAddressZip": "sample string 15",
+                "Is_Mdm_Client": true,
+                "PriorTaxOffice": 17,
+                "PriorTaxProFirstName": "sample string 18",
+                "PriorTaxProLastName": "sample string 19",
+                "TpPreparerID": "sample string 20",
+                "PhoneType": null,
+                "Phone_No": "1234567890",
+                "Email_Txt": "test@gmail.com",
+                "First_NM": "s9fsd",
+                "Middle_NM": null,
+                "Last_NM": "fsdg",
+                "Last4SSN": "1282",
+                "Client_Rating": 1,
+                "Client_Tenure_Desc": "sample string 29",
+                "Birth_Dt": "2016-08-30T10:09:19.1866193-05:00",
+                "Gi_Id": 1,
+                "Client_Latino_Lang_Cd": 31,
+                "Last_Updt_Proc_Ts": "2016-08-30T10:09:19.1866193-05:00",
+                "Last_Updt_User_Id": 32,
+                "Cre_Proc_Id": 33,
+                "Cre_Proc_Ts": "2016-08-30T10:09:19.1866193-05:00"
+
+            }
+
+            ]
+        };
+                      
+
+        $window = $injector.get('$window');
+        $window.ApiBaseUrl = mockBaseUrl;
+        $window.LoggedInUser = mockUser;
+
+        $scope = $rootScope.$new();
+        $httpBackend = $injector.get('$httpBackend');
+        $httpBackend.expectPOST('api/Appointment/GetAppointmentDetails').respond(200, mockAppointment);
+        $httpBackend.expectGET('api/Appointment/GetAppointmentHistory?Appointment_Id=55965').respond(200, mockAppointmentHistory);
+        $httpBackend.expectGET('api/Client/GetClientInfo?Client_Id={Client_Id}').respond(200,mockClientInfo);
+
+      controller = $controller('appointmentDetailsModalCtrl', { '$scope': $scope });
+        $httpBackend.flush();
+    }));
+    //mockProjectionParams = {
+    //    "EndDate": mockDate,
+    //    "Office_Id": 8037,
+    //    "StartDate": mockDate
+    //};
+
+    
+   
+
+//    resource = $injector.get('apptHistory');
+//    provider = resource.getInstance($scope);
+//    provider.initialize(true, true, true);
+
+//    $scope.$apply();
+
+//    $httpBackend.flush();
+//});
+    it('should be defined in module', function () {
+        expect(controller).toBeDefined();
+    });
+    //$httpBackend.when("GET", new RegExp('.*')).respond(function (method, url, data) {
+    //    console.log("api/Appointment/GetAppointmentHistory", url);
+    //});
+
+    afterEach(function () {
+        $scope.$destroy();
+        $httpBackend.verifyNoOutstandingExpectation();
+        $httpBackend.verifyNoOutstandingRequest();
+    });
+   
+   
+});
+
+
+

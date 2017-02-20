@@ -1,0 +1,111 @@
+<!--appointmentPopover.html disabled -->
+<div class="block" ng-class="{'schedule' : blockType() == dayBlock.blockTypes.SCHEDULE,
+                              'availability ': blockType() == dayBlock.blockTypes.AVAILABILITY,
+                              'appointment' : blockType() == dayBlock.blockTypes.APPOINTMENT,
+                              'appointment-read-only' : blockType() == dayBlock.blockTypes.APPOINTMENT && !dayBlock.blockRules.canCreateChild && !dayBlock.blockRules.canEdit,
+                              'appointment-proposed' : blockType() == dayBlock.blockTypes.APPOINTMENT && block.$ProposedAppointment,
+                              'availability-range' : blockType() == dayBlock.blockTypes.AVAILABILITY_RANGE,
+                              'selected-block' : block.$selected,
+                              'smaller-range' : (blockType() != dayBlock.blockTypes.APPOINTMENT && height < 20 && height >= 10) || (blockType() == dayBlock.blockTypes.APPOINTMENT && height < 30 && height >= 20),
+                              'small-range' : (blockType() != dayBlock.blockTypes.APPOINTMENT && height < 10) || (blockType() == dayBlock.blockTypes.APPOINTMENT && height < 20),
+                              'clickable-read-only' : dayBlock.blockRules.canCreateChild && !dayBlock.blockRules.canEdit && blockType() != dayBlock.blockTypes.AVAILABILITY_RANGE && blockType() != dayBlock.blockTypes.APPOINTMENT,
+                              'csp': block.Employee_Role_Id === dayBlock.employeeRoles.CSP,
+                              'csl': block.Employee_Role_Id === dayBlock.employeeRoles.CSL,
+                              'tax-pro' : block.Employee_Role_Id === dayBlock.employeeRoles.TAX_PRO,
+                              'schedule-other-office' : dayBlock.isScheduleOtherOffice,
+                              'not-in-selected-role': dayBlock.doesNotMatchSelectedRole,
+                                'availability-locked': (blockType() === dayBlock.blockTypes.AVAILABILITY && dayBlock.isAvailabilityDisable)}"
+     ng-style="{ 'top': top, 'height': height + 'px' }">
+    <div class="label-top-line" ng-if="blockType() == dayBlock.blockTypes.SCHEDULE &&
+                                        !(dayBlock.blockRules.canCreateChild && !dayBlock.blockRules.canEdit) &&
+                                        height >= 20 &&
+                                        !dayBlock.isScheduleOtherOffice">
+        <span ng-if="block.Employee_Role_Id === dayBlock.employeeRoles.CSP">CSP</span>
+        <span ng-if="block.Employee_Role_Id === dayBlock.employeeRoles.TAX_PRO">TP</span>
+        <span ng-if="block.Employee_Role_Id === dayBlock.employeeRoles.CSL">CSL</span>
+    </div>
+    <div class="label-top-line" ng-if="dayBlock.isScheduleOtherOffice">({{ block.$office.Office_Id }}) {{ block.$office.Address_Line_1_Txt }}</div>
+    <!-- Do not show a label on the block for an AVAILABILITY_RANGE block, or for a read-only appointment -->
+    <div class="time" layout="column" layout-align="center start"
+         ng-if="blockType() != dayBlock.blockTypes.AVAILABILITY_RANGE &&
+                    !(blockType() == dayBlock.blockTypes.APPOINTMENT && !dayBlock.blockRules.canCreateChild && !dayBlock.blockRules.canEdit)">
+        <span>{{timeSpanLabel}}</span>
+        <div class="appt-tall" ng-if="blockType() === dayBlock.blockTypes.APPOINTMENT && height > 10">
+            <span ng-if="!block.$ProposedAppointment" class="client-name">{{::block.ClientLastName}}, {{::block.ClientFirstName}}</span>
+            <div class="proposed-appt-label" ng-if="block.$ProposedAppointment" layout="row" layout-align="start center">
+                <span class="client-name">{{::block.ClientFirstName}} {{::block.ClientLastName | limitTo:1}}.</span>
+                <div class="client-info-label" layout="row" layout-align="end center" flex>
+                    <div layout="row" layout-align="end start" flex><span>{{::block.$clientTenure}}</span><span ng-if="::block.$clientTenure">,</span></div>
+                    <bilingual-status ng-if="::block.$isSpanishPreferred"></bilingual-status>
+                    <span class="client-rating">{{::block.$clientRating}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div ng-if="blockType() === dayBlock.blockTypes.APPOINTMENT && isBlockDragging"
+         class="drag-image"
+         layout="column"
+         ng-class="{'invalid-drop' : !isValidDrop, 'valid-drop-with-warning' : hasWarning }"
+         ng-style="{'top' : dragTopPosition, 'left' :  dragLeftPosition, 'display' : dragDisplay }">
+        <div class="time" ng-show="isValidDrop" layout="column" layout-align="center start">
+            <span>{{proposedMoveStartTime}} - {{proposedMoveEndTime}}</span>
+            <span ng-if="!block.$ProposedAppointment" class="client-name" ng-show="height > 10">{{::block.ClientLastName}}, {{::block.ClientFirstName}}</span>
+            <span ng-if="block.$ProposedAppointment" class="client-name" ng-show="height > 10">{{::block.ClientFirstName}} {{::block.ClientLastName | limitTo:1}}.</span>
+        </div>
+    </div>
+    <!-- The following div appears when a clickable-read-only block is being dragged upon in order to create a child block -->
+    <div class="drag-to-create-block" layout="column" flex
+         ng-if="isDraggingToCreate &&
+                dayBlock.blockRules.canCreateChild &&
+                !dayblock.blockRules.canEdit &&
+                blockType() === dayBlock.blockTypes.AVAILABILITY"
+         ng-style="{'top' : topOfDragToCreateBlock, 'height' : heightOfDragToCreateBlock }"
+         ng-class="{'csp': selectedRole() === dayBlock.employeeRoles.CSP,
+                    'csl': selectedRole() === dayBlock.employeeRoles.CSL,
+                    'tax-pro' : selectedRole() === dayBlock.employeeRoles.TAX_PRO }">
+        <div class="label-top-line" ng-hide="isDragToCreateMinimumSize">
+            <span ng-if="selectedRole() === dayBlock.employeeRoles.CSP">CSP</span>
+            <span ng-if="selectedRole() === dayBlock.employeeRoles.TAX_PRO">TP</span>
+            <span ng-if="selectedRole() === dayBlock.employeeRoles.CSL">CSL</span>
+        </div>
+        <span class="label-second-line">{{proposedDragToCreateStart}} - {{proposedDragToCreateEnd}}</span>
+        <div class="resize south">
+            <div>
+                <md-icon md-font-library="material-icons" class="drag-handle ng-scope ng-isolate-scope material-icons" aria-hidden="false">drag_handle</md-icon>
+            </div>
+        </div>
+    </div>
+
+    <!-- drag handles -->
+    <div ng-hide="dayBlock.doesNotMatchSelectedRole || dayBlock.isScheduleOtherOffice || dayBlock.isAppointmentReadOnly">
+        <!-- the 'move-entire' handle covers the entire block, but is invisible -->
+        <div ng-if="(dayBlock.blockRules.canEdit || dayBlock.blockRules.canCreateChild) && blockType() !== dayBlock.blockTypes.APPOINTMENT" class="move-entire"></div>
+        <!--<div ng-if="(dayBlock.blockRules.canEdit || dayBlock.blockRules.canCreateChild) && blockType() === dayBlock.blockTypes.APPOINTMENT"
+             ng-click="editAppointmentInfo()"
+             class="move-entire">
+        </div>-->
+        <!--<div ng-if="(dayBlock.blockRules.canEdit || dayBlock.blockRules.canCreateChild) && blockType() === dayBlock.blockTypes.APPOINTMENT"
+             ng-click="dayBlock.isAppointmentPopoverOpen=true"
+             class="move-entire"
+             uib-popover-template="'/App/dayCalendar/templates/appointmentPopover.html'"
+             popover-animation="false"
+             popover-trigger="outsideClick"
+             popover-is-open="dayBlock.isAppointmentPopoverOpen"
+             popover-placement="{{popoverPlacement}}"
+             popover-enable="!block.$ProposedAppointment">
+        </div>-->
+        <div ng-if="dayBlock.blockRules.canEdit   && !(blockType() === dayBlock.blockTypes.AVAILABILITY && dayBlock.isAvailabilityDisable)" class="resize north">
+            <div>
+                <md-icon md-font-library="material-icons" class="drag-handle ng-scope ng-isolate-scope material-icons" aria-hidden="false">drag_handle</md-icon>
+            </div>
+        </div>
+        <div ng-if="dayBlock.blockRules.canEdit  && !(blockType() === dayBlock.blockTypes.AVAILABILITY && dayBlock.isAvailabilityDisable)" class="resize south">
+            <div>
+                <md-icon md-font-library="material-icons" class="drag-handle ng-scope ng-isolate-scope material-icons" aria-hidden="false">drag_handle</md-icon>
+            </div>
+        </div>
+    </div>
+    <calendar-alert class="alert" ng-if="block.Alert" alert-strings="block.Alert.Messages" height="height"
+                    level="block.Alert.Level" ng-click="setSelectedBlock()"></calendar-alert>
+
+</div>

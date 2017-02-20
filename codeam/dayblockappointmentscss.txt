@@ -1,0 +1,34 @@
+@import '_variables';
+
+.day-block.block {
+	
+	&.appointment {
+	    color: $color-block-text-appointment;
+	    font-size: 12px;
+	    background-color: $background-color-appointment;
+    }		
+
+	&.appointment-read-only {
+		background-color: $background-color-appointment;
+		border-width: 0;
+	}
+
+	&.appointment-proposed {
+		color: $color-appointment-proposed;
+		border: solid 3px $border-color-appointment;
+		background-color: $background-color-appointment-proposed;
+	}
+        	
+	&.selected-block.appointment {
+        z-index: $z-index-day-block-selected;
+	}
+	&.appt-dark-gray {
+		background-color:darkgray !important;
+	}
+	&.appt-white-block {
+		background-color:#ffffff !important; 
+	}
+	&.appt-light-blue{
+		background-color:#b6d1e8 !important; 
+	}
+}

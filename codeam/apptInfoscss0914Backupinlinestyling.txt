@@ -1,0 +1,120 @@
+.appointment-info .client-field {
+font-size : 12px;
+margin-top: 3px;}
+.appointment-info .client-first-field {
+font-size : 12px;
+    margin: 3px 0px 0 10px;
+	 }
+ .appointment-info .client-field .field-label, .appointment-info .client-first-field .field-label {
+ font-size : 12px;
+      color: #686360;}
+.appointment-info .client-field .field-value, .appointment-info .client-first-field .field-value {
+     font-size: 12px;
+    min-height: 21px; font-weight: bold; }
+	.language-checkbox{    margin-left: 0px !important;
+	}
+	
+
+ 
+.notes-textarea {
+    height: 40px;
+    width: 75%;
+    border: solid 1px #ababab;
+    font-size: 10px;
+    resize: none;
+	padding-left: 2px;
+	 }
+.appt-detail-textarea{
+width: 90% !important;
+}
+.notes-textarea-edit{ height: 20px;
+    width: 75%;
+    border: solid 1px #ababab;
+    font-size: 12px;
+    resize: none; }
+.button-av-1{
+    background-color: #DCDCDC;
+	width:155px;
+	min-width:38px;
+	max-height:50px;
+	word-wrap:break-word !important;
+	overflow:hidden;
+	box-shadow: 0 8px 2px -2px #BDBDBD;
+	padding: 0 12px !important;
+	margin: 6px 8px;
+	md-ripple-size : auto;
+	text-align: center;
+	white-space:normal;
+	line-height:1 !important;
+	font-size: 12px;
+    font-weight: bold;
+}
+.button-av{
+    font-weight: 800;
+	font-size:10px;
+	height:20px;
+    background-color: #DCDCDC;
+	line-height: 28px !important;
+}
+.btn-txt span{
+    margin-left: 10px;
+	}
+
+.btn-txt{text-align:left}
+.appt-info-client-btn { position: absolute;
+    top: 50px;
+width:50%;
+padding-right: 10%}
+.mgnBtm5px{margin-bottom:5px !important}
+.mgnLft18px{margin-left: 18px !important;}
+.mgnTp{margin-top: -15px;}
+.minHgt155px{    height: 155px;
+              max-width: 50%;}
+.clientInfo{    padding: 8px;}
+//.pageDivider{margin-bottom:-10px;}
+.appt-info-btn .md-button{min-height: 27px !important;
+min-width:120px !important;}
+md-input-container .message-txt{margin-top:-5px !important;}
+md-tab-content{
+backgroud-color:white !important;}
+.pdngTp10px{padding-top:10px;padding-left: 8px;}
+.pdngBtm10px{padding-bottom:10px;padding-left: 8px;}
+.pdngTp5px{padding-top:5px;padding-left: 8px;}
+.fntsize15{font-size:15px}
+.btnIcon{float: left;
+    padding-top: 3px;}
+	.followupAppt{    margin: auto;
+    vertical-align: bottom;}
+	.phLbl{vertical-align: bottom;
+    margin: auto;
+    margin-top: 9px;
+    float: left;
+    font-size: 12px;}
+.btnIconsmall{
+font-weight: normal !important;
+font-style: normal;
+width: .5em !important;
+line-height: 0.5 !important;
+font-size: 8px !important; /* small icon size */
+display: inline-block;
+width: 1em;
+height: 1em;
+vertical-align: super !important;
+direction: rtl !important;
+float: left;
+margin-top: 10px;
+}
+.txtEllps{width: 280px;
+    white-space: nowrap;
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+}
+.wdth130px{width : 25% !important}
+.mgnRgt95{margin-right: 95px;}
+md-input-container {
+		margin: 4px 0 !important;}
+		.wdth25p{width: 25%}
+		.wdth23p{width:23%}
+		.wdth48p{width:48%}
+		.wdth20p{width: 20%}
+		
